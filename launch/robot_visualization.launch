@@ -1,0 +1,17 @@
+<launch>
+    <!-- Arguments for initial joint positions -->
+    <arg name="j1_init_pos" default="0.0"/>
+    <arg name="j2_init_pos" default="0.0"/>
+    <arg name="j3_init_pos" default="0.0"/>
+
+    <!-- Load the robot description parameter -->
+    <param name="robot_description" command="$(find xacro)/xacro '$(find smm_synthesis)/urdf/smm_structure_anatomy_assembly.xacro'" />
+
+    <!-- Node to publish joint states -->
+    <node name="joint_state_publisher_gui" pkg="joint_state_publisher_gui" type="joint_state_publisher_gui" />
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />
+    
+    <!-- Launch RViz -->
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find smm_synthesis)/config/rviz/smm_visualization_config.rviz" />
+ 
+</launch>

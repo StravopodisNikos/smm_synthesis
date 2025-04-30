@@ -1,0 +1,8 @@
+<launch>
+  <arg name="frame_output_file" default="extract_zero_frames_default.yaml"/>
+
+  <node name="frame_extractor_kdl" pkg="smm_synthesis" type="frame_extractor_kdl" output="screen">
+    <param name="output_file" value="$(arg frame_output_file)" />
+  </node>
+
+</launch>

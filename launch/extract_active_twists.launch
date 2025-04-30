@@ -1,0 +1,6 @@
+<launch>
+  <arg name="input_file" default="gsai0.yaml"/>
+  <node name="twist_extractor_screws" pkg="smm_synthesis" type="twist_extractor_screws" output="screen">
+    <param name="input_file" value="$(arg input_file)" />
+  </node>
+</launch>

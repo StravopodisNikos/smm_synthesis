@@ -1,0 +1,56 @@
+<?xml version="1.0" ?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+<!-- [5/9/22] Here the transmission blocks for the joints of the Ovidius Lab robot are defined:
+	1. Joint 1 uses a stepper motor with gearbox of 40:1 mechanical ratio
+	2. Dynamixel Pro Plus model: PH54-200-S500-R are used for Joints 2-3
+	3. Dynamixel Pro Plus model: PH54-100-S500-R are used for Joint  4
+	
+	** No nechanical reduction will be given for Dynamixel Actuators! TO BE RESOLVED!
+	
+-->
+
+<!-- STEPPER -->
+   <xacro:macro name="tran_eff_stepper" params="joint_name">
+	  <transmission name="eff_tran1">
+	    <type>transmission_interface/SimpleTransmission</type>
+	    <joint name="${joint_name}">
+	      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+	    </joint>
+	    <actuator name="stepper_1">
+	      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+	      <mechanicalReduction>1</mechanicalReduction>
+	    </actuator>
+	  </transmission>
+   </xacro:macro>
+   
+<!-- DXL's Position Controllers-->
+   <xacro:macro name="tran_pos_dxls" params="joint_name idx">
+	  <transmission name="pos_tran_${idx}">
+	    <type>transmission_interface/SimpleTransmission</type>
+	    <joint name="${joint_name}">
+	      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+	    </joint>
+	    <actuator name="dxl_${idx}">
+	      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+	      <mechanicalReduction>1</mechanicalReduction>
+	    </actuator>
+	  </transmission>
+   </xacro:macro>   
+
+<!-- DXL's Effort Controllers-->
+<xacro:macro name="tran_eff_dxls" params="joint_name idx">
+      <transmission name="effort_tran_${idx}">
+        <type>transmission_interface/SimpleTransmission</type>
+        <joint name="${joint_name}">
+          <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+        </joint>
+        <actuator name="dxl_${idx}">
+          <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+          <mechanicalReduction>1</mechanicalReduction>
+        </actuator>
+      </transmission>
+</xacro:macro>
+   
+</robot>
+   

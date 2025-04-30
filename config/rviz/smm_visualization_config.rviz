@@ -1,0 +1,239 @@
+Panels:
+  - Class: rviz/Displays
+    Help Height: 70
+    Name: Displays
+    Property Tree Widget:
+      Expanded:
+        - /Robot Model1
+        - /Robot Model1/Links1
+        - /TF1
+        - /TF1/Frames1
+        - /TF1/Tree1
+        - /TF1/Tree1/world1
+        - /TF1/Tree1/world1/base_plate1
+      Splitter Ratio: 0.5
+    Tree Height: 574
+Preferences:
+  PromptSaveOnExit: true
+Toolbars:
+  toolButtonStyle: 2
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Alpha: 0.5
+      Cell Size: 1
+      Class: rviz/Grid
+      Color: 160; 160; 164
+      Enabled: true
+      Line Style:
+        Line Width: 0.029999999329447746
+        Value: Lines
+      Name: Grid
+      Normal Cell Count: 0
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Plane: XY
+      Plane Cell Count: 10
+      Reference Frame: base_plate
+      Value: true
+    - Alpha: 1
+      Class: rviz/RobotModel
+      Collision Enabled: false
+      Enabled: true
+      Links:
+        All Links Enabled: true
+        Expand Joint Details: false
+        Expand Link Details: false
+        Expand Tree: false
+        Link Tree Style: Links in Alphabetic Order
+        active_module_a_1:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        active_module_a_2:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        active_module_b_1:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        active_module_b_2:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        base_plate:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        force_sensor:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        massage_tool:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        metalink_1_pseudo1_a:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        metalink_1_pseudo1_b:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        metalink_2_pseudo1_a:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        metalink_2_pseudo1_b:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        metalink_2_pseudo2_a:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        metalink_2_pseudo2_b:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        world:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+      Name: Robot Model
+      Robot Description: robot_description
+      TF Prefix: ""
+      Update Interval: 0
+      Value: true
+      Visual Enabled: true
+    - Class: rviz/TF
+      Enabled: true
+      Filter (blacklist): ""
+      Filter (whitelist): ""
+      Frame Timeout: 15
+      Frames:
+        All Enabled: false
+        active_module_a_1:
+          Value: false
+        active_module_a_2:
+          Value: false
+        active_module_b_1:
+          Value: true
+        active_module_b_2:
+          Value: true
+        base_link:
+          Value: true
+        base_plate:
+          Value: true
+        force_sensor:
+          Value: false
+        massage_tool:
+          Value: false
+        metalink_1_pseudo1_a:
+          Value: false
+        metalink_1_pseudo1_b:
+          Value: false
+        metalink_2_pseudo1_a:
+          Value: false
+        metalink_2_pseudo1_b:
+          Value: false
+        metalink_2_pseudo2_a:
+          Value: false
+        metalink_2_pseudo2_b:
+          Value: false
+        world:
+          Value: true
+      Marker Alpha: 1
+      Marker Scale: 0.800000011920929
+      Name: TF
+      Show Arrows: true
+      Show Axes: true
+      Show Names: true
+      Tree:
+        world:
+          base_plate:
+            base_link:
+              metalink_1_pseudo1_a:
+                metalink_1_pseudo1_b:
+                  active_module_a_1:
+                    active_module_b_1:
+                      metalink_2_pseudo1_a:
+                        metalink_2_pseudo1_b:
+                          metalink_2_pseudo2_a:
+                            metalink_2_pseudo2_b:
+                              active_module_a_2:
+                                active_module_b_2:
+                                  force_sensor:
+                                    massage_tool:
+                                      {}
+      Update Interval: 0
+      Value: true
+  Enabled: true
+  Global Options:
+    Background Color: 48; 48; 48
+    Default Light: true
+    Fixed Frame: base_plate
+    Frame Rate: 30
+  Name: Visualization Manager
+  Tools:
+    - Class: rviz/Interact
+      Hide Inactive Objects: true
+    - Class: rviz/MoveCamera
+    - Class: rviz/Select
+    - Class: rviz/Measure
+  Value: true
+  Views:
+    Current:
+      Class: rviz/Orbit
+      Distance: 1.9171501398086548
+      Enable Stereo Rendering:
+        Stereo Eye Separation: 0.05999999865889549
+        Stereo Focal Distance: 1
+        Swap Stereo Eyes: false
+        Value: false
+      Field of View: 0.7853981852531433
+      Focal Point:
+        X: 0
+        Y: 0
+        Z: 0
+      Focal Shape Fixed Size: true
+      Focal Shape Size: 0.05000000074505806
+      Invert Z Axis: false
+      Name: Current View
+      Near Clip Distance: 0.009999999776482582
+      Pitch: 0.97979736328125
+      Target Frame: <Fixed Frame>
+      Yaw: 5.838509559631348
+    Saved: ~
+Window Geometry:
+  Displays:
+    collapsed: false
+  Height: 795
+  Hide Left Dock: false
+  Hide Right Dock: false
+  QMainWindow State: 000000ff00000000fd0000000100000000000001af000002c1fc0200000001fb000000100044006900730070006c006100790073010000003d000002c1000000c900ffffff00000256000002c100000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  Width: 1035
+  X: 757
+  Y: 27

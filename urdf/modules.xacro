@@ -1,0 +1,371 @@
+<?xml version="1.0" ?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+<!-- [16-2-24] Copied from catkin_ws/src/smm_ros_gazebo_pkg/urdf/building _blocks 
+               - added collision properties for MoveIt integration -->
+
+<!-- ALL components used to assemble the Ovidius SMM are defined here. This file should be xacro:included in each xacro:assembly robot urdf file! -->
+<!-- The base plate of Ovidius Robot (fixed to robot table)-->
+<xacro:macro name="virtual_fix_joint" params="parent child">
+  <joint name="${parent}__${child}" type="fixed">
+    <origin rpy="0 0 0" xyz="0 0 0" />
+    <parent link="${parent}"/>
+    <child link="${child}"/>
+  </joint>
+</xacro:macro>
+  
+<xacro:macro name="base_plate" params="origin_xyz origin_rpy">
+	<link name="base_plate">
+	    <inertial>
+		 <origin rpy="${origin_rpy}" xyz="${origin_xyz}"/>
+		 <mass value ="5" />
+		 <inertia ixx="0.0375" ixy="0" ixz="0" iyy="0.104167" iyz="0" izz="0.141667"/>
+	    </inertial>
+	    <visual>
+		 <origin rpy="${origin_rpy}" xyz="${origin_xyz}"/>
+      	<geometry>
+        		<box size="0.5 0.3 0.01"/>
+      	</geometry>
+		 <material name="gray">
+		   <color rgba="0.5 0.5 0.5 1"/>
+		 </material>
+	    </visual>
+	    <!-- Added on [16-2-24]. Checked visually by executing: $ roslaunch smm_ros_gazebo_pkg smm_ros_gazebo.launch -->
+	    <collision>
+		 <origin rpy="${origin_rpy}" xyz="${origin_xyz}"/>
+      	           <geometry>
+        		   <box size="0.5 0.3 0.01"/>
+        		 </geometry>
+	    </collision>	    
+	</link>
+</xacro:macro>
+
+<xacro:macro name="joint1" params="origin_rpy origin_xyz parent child">
+<joint name="${parent}__${child}" type="revolute">
+	<origin rpy="${origin_rpy}" xyz="${origin_xyz}"/>  
+	<parent link="${parent}"/>
+	<child link="${child}"/>
+	<axis xyz="0 0 1"/>
+	<limit effort="120" lower="-2" upper="2" velocity="4.0841"/> <!-- Previous effort: 55-->
+	<dynamics damping="2.0" friction="2.0"/> <!--added friction for Stepper Motor + Gearbox [29-10-24] 0.5,0.3-->
+</joint>	
+<!-- [17/9/22] Added sensor tag inside joint tag - UNDER DEVEL!
+<gazebo reference="joint1">
+    <provideFeedback>true</provideFeedback>
+</gazebo>
+<gazebo>	
+	<sensor name="ft_sensor_joint1" type="force_torque">
+		<force_torque>
+			<frame>${child}</frame>
+			<measure_direction>child_to_parent</measure_direction>
+		</force_torque>
+		<always_on>true</always_on>
+		<update_rate>10</update_rate>
+		<visualize>true</visualize>
+		<topic>torque_sensor1_topic_new</topic>
+		<frame>${child}</frame>
+		<plugin name="torque_sensor1_new" filename="libgazebo_ros_ft_sensor.so">
+		     <topicName>torque_sensor1_topic_new</topicName>
+        		<bodyName>${child}</bodyName>
+        		<jointName>joint1</jointName>
+		</plugin>         
+	</sensor>
+</gazebo> -->
+
+</xacro:macro>
+
+<!-- The baselink of Ovidius Robot-->
+<xacro:macro name="base_link" params="name origin_xyz origin_rpy">
+	<link name="${name}">
+	    <inertial>
+		 <origin rpy="0 0 0" xyz="0.00205 0.00373 0.015774"/>
+		 <mass value ="0.500" />
+		 <inertia ixx="5.063e-004" ixy="2.773e-005" ixz="7.042e-007" iyy="5.387e-004" iyz="1.237e-006" izz="7.207e-004"/>
+	    </inertial>
+	    <visual>
+		 <origin rpy="${origin_rpy}" xyz="${origin_xyz}"/>
+		 <geometry>
+		   <mesh filename="package://smm_ros_gazebo_pkg/meshes/ovidius_smm_baselink.stl" scale="0.001 0.001 0.001"/>
+		 </geometry>
+		 <material name="gray">
+		   <color rgba="0.5 0.5 0.5 1"/>
+		 </material>
+	    </visual>
+	    <!-- Added on [16-2-24]. Checked visually by executing: $ roslaunch smm_ros_gazebo_pkg smm_ros_gazebo.launch -->
+	    <collision>
+		 <origin rpy="${origin_rpy}" xyz="0 0 0.025"/>
+		 <geometry>
+		   <cylinder length="0.04" radius="0.05"/>
+		 </geometry>
+	    </collision>	    
+	</link>
+</xacro:macro>
+
+<!-- MASS parameters for Pseudojoint Design-->
+<xacro:property name="pseudo_mass_static" value="2.2036439"/>
+<xacro:property name="pseudo_mass_moving" value="0.4450127"/>
+<xacro:property name="active_mass_static" value="0.892"/>
+<xacro:property name="active_mass_moving" value="0.102"/>
+
+<!-- Pseudo static block-->
+<xacro:macro name="pseudo_static_link_mesh" params="name origin_xyz origin_rpy">
+    <link name="${name}">
+      <inertial>
+        <origin rpy="0 0 0" xyz="0 0 0.09"/>
+        <mass value ="${pseudo_mass_static}" />
+        <!--<inertia ixx="3.5655174315e-07" ixy="3.0094534019e-15" ixz="-3.0659548585e-16" iyy="8.1971725028e-7" iyz="1.0236492333e-16" izz="5.0684999189e-07"/> -->
+        <inertia ixx="0.0186" ixy="3.0094534019e-7" ixz="-3.0659548585e-7" iyy="0.0186" iyz="1.0236492333e-7" izz="5.0684999189e-04"/> 
+      </inertial>
+      <visual>
+        <origin rpy="${origin_rpy}" xyz="${origin_xyz}" />
+        <geometry>
+          <mesh filename="package://smm_ros_gazebo_pkg/meshes/pjoint1_static.stl" scale="0.001 0.001 0.001"/>
+        </geometry>
+              <material name="silver">
+        <color rgba="0.753 0.753 0.753 1"/>
+      </material>
+      </visual>
+    <!-- Added on [16-2-24]. Checked visually by executing: $ roslaunch smm_ros_gazebo_pkg smm_ros_gazebo.launch -->
+    <collision>
+	 <origin rpy="0 0 0" xyz="0 0 0.08"/>
+	 <geometry>
+	   <cylinder length="0.125" radius="0.05"/>
+	 </geometry>
+    </collision>
+    </link>
+</xacro:macro>
+
+<!-- Pseudo moving block-->
+<xacro:macro name="pseudo_moving_link_mesh" params="name origin_xyz origin_rpy">
+    <link name="${name}">
+      <inertial>
+        <origin rpy="0 0 0" xyz="0 0 0.04"/>
+        <mass value ="${pseudo_mass_moving}" />
+        <!-- <inertia ixx="1.345843e-07" ixy="1.399547e-14" ixz="-2.461662e-15" iyy="1.577317e-7" iyz="2.024057e-13" izz="1.101806e-7"/> -->
+        <inertia ixx="1.345843e-04" ixy="1.399547e-9" ixz="-2.461662e-9" iyy="1.577317e-4" iyz="2.024057e-9" izz="1.101806e-7"/>
+      </inertial>
+      <visual>
+        <origin rpy="${origin_rpy}" xyz="${origin_xyz}" />
+        <geometry>
+          <mesh filename="package://smm_ros_gazebo_pkg/meshes/pjoint1_moveable.stl" scale="0.001 0.001 0.001"/>
+        </geometry>
+        <material name="silver">
+          <color rgba="0.75 0.75 0.75 1"/>
+        </material>
+      </visual>
+    <!-- Added on [16-2-24]. Checked visually by executing: $ roslaunch smm_ros_gazebo_pkg smm_ros_gazebo.launch -->
+    <collision>
+	 <origin rpy="1.5708 0 0" xyz="0 0.095 0"/>
+	 <geometry>
+	   <box size="0.1 0.05 0.01 "/>
+	 </geometry>
+    </collision>      
+    </link>
+</xacro:macro>
+
+<!-- Synthetic joint parameters-->
+ <xacro:macro name="synthetic_joint_name" params="synthetic_name  synthetic_origin_rpy synthetic_origin_xyz synthetic_parent synthetic_child">
+    <joint name="${synthetic_name}" type="fixed">
+      <origin rpy="${synthetic_origin_rpy}" xyz="${synthetic_origin_xyz}" />
+      <parent link="${synthetic_parent}" />
+      <child link="${synthetic_child}" />
+    </joint>
+</xacro:macro>
+
+<!-- Pseudojoint joint angle congiguration -->
+<xacro:macro name="pseudo_joint_name" params="pseudo_name  pseudo_origin_rpy pseudo_origin_xyz pseudo_parent pseudo_child">
+<joint name="${pseudo_name}" type="fixed">
+    <origin rpy="${pseudo_origin_rpy}" xyz="${pseudo_origin_xyz}"/>
+    <parent link="${pseudo_parent}"/>
+    <child link="${pseudo_child}"/>
+</joint>
+</xacro:macro>
+
+<!-- Fixed assembly parameters-->
+ <xacro:macro name="assembly_active_module2pseudo" params="active_assembly_name  active_assembly_origin_rpy active_assembly_origin_xyz active_assembly_parent active_assembly_child">
+    <joint name="${active_assembly_name}" type="fixed">
+      <origin rpy="${active_assembly_origin_rpy}" xyz="${active_assembly_origin_xyz}" />
+      <parent link="${active_assembly_parent}" />
+      <child link="${active_assembly_child}" />
+    </joint>
+</xacro:macro>
+
+<!-- Active static block-->
+<xacro:macro name="active_static_link_mesh" params="name origin_xyz origin_rpy">
+    <link name="${name}">
+      <inertial>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <mass value ="${active_mass_static}" />
+        <inertia ixx="0.001" ixy="-1.292e-11" ixz="3.624e-12" iyy="4.195e-04" iyz="-9.613e-06" izz="0.001"/>
+      </inertial>
+      <visual>
+        <origin rpy="${origin_rpy}" xyz="${origin_xyz}" />
+        <geometry>
+          <mesh filename="package://smm_ros_gazebo_pkg/meshes/active_module_fixed.stl" scale="0.001 0.001 0.001"/>
+        </geometry>
+              <material name="lightblack">
+        <color rgba="0.25 0.25 0.25 1"/>
+      </material>
+      </visual>
+    <!-- Added on [16-2-24]. Checked visually by executing: $ roslaunch smm_ros_gazebo_pkg smm_ros_gazebo.launch -->
+    <collision>
+	 <origin rpy="0 1.5708 1.5708" xyz="0 0.030 -0.015"/>
+	 <geometry>
+	   <box size="0.155 0.055 0.055 "/>
+	 </geometry>
+    </collision>        
+    </link>
+</xacro:macro>
+
+<!-- Active moving block-->
+<xacro:macro name="active_moving_link_mesh" params="name origin_xyz origin_rpy">
+    <link name="${name}">
+      <inertial>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <mass value ="${active_mass_moving}" />
+        <inertia ixx="3.103e-04" ixy="-3.374e-13" ixz="1.202e-12" iyy="3.187e-04" iyz="8.958e-06" izz="5.995e-05"/>
+      </inertial>
+      <visual>
+        <origin rpy="${origin_rpy}" xyz="${origin_xyz}" />
+        <geometry>
+          <mesh filename="package://smm_ros_gazebo_pkg/meshes/active_module_moving.stl" scale="0.001 0.001 0.001"/>
+        </geometry>
+        <material name="black">
+          <color rgba="0.1 0.1 0.1 1"/>
+        </material>
+      </visual>
+    <!-- Added on [16-2-24]. Checked visually by executing: $ roslaunch smm_ros_gazebo_pkg smm_ros_gazebo.launch -->
+    <collision>
+	 <origin rpy="1.5708 0 0" xyz="0.0155 0.045 0"/>
+	 <geometry>
+	   <box size="0.155 0.06 0.011 "/>
+	 </geometry>
+    </collision>        
+    </link>
+</xacro:macro>
+
+<!-- Synthetic joint parameters-->
+ <xacro:macro name="dxlPROp_joint" params="active_name  active_origin_rpy active_origin_xyz active_parent active_child">
+    <joint name="${active_name}" type="revolute">
+      <origin rpy="${active_origin_rpy}" xyz="${active_origin_xyz}" />
+      <parent link="${active_parent}" />
+      <child link="${active_child}" />
+      <axis xyz="1 0 0"/>
+      <limit effort="55" lower="-2" upper="2" velocity="4.0841"/>
+      <dynamics damping="10.0" friction="10.0"/> <!--added friction for Brushless DC Motor + Huge Reduction Gearbox [29-10-24] prev: 1.0,1.5-->
+    </joint>
+</xacro:macro>
+
+<!-- FORCE SENSOR -->
+<xacro:macro name="force_sensor" params="name">
+	<link name="${name}">
+	    <inertial>
+	      <origin rpy="0 0 0" xyz="0 0 -0.025"/>
+	      <mass value ="0.116" />
+	      <inertia ixx="5.294e-005" ixy="-2.2e-007" ixz="-3.787e-008" iyy="5.233e-005" iyz="-2.827e-008" izz="4.192e-005"/>
+	    </inertial>
+	    <visual>
+	      <origin rpy="0 0 0" xyz="0 0 0"/>
+	      <geometry>
+	        <mesh filename="package://smm_ros_gazebo_pkg/meshes/force_sensor_stl.stl" scale="0.001 0.001 0.001"/>
+	      </geometry>
+	      <material name="edward">
+	        <!-- Color Pick: http://www.flatuicolorpicker.com/grey-rgba-color-model/ -->
+	        <color rgba="0.6705 0.7098 0.7098 1"/>
+	      </material>
+	    </visual>
+	<!-- Added on [16-2-24]. Checked visually by executing: $ roslaunch smm_ros_gazebo_pkg smm_ros_gazebo.launch -->
+    	<collision>
+    		<origin rpy="0 0 0" xyz="0 0 0.015" />
+      		<geometry>
+        		  <cylinder length="0.055" radius="0.035"/>
+      		</geometry>
+    	</collision> 
+	</link>
+</xacro:macro>
+
+<!-- END-EFFECTOR-TOOL/MASSAGE-TOOL-XACRO-VISUALS-->
+<xacro:macro name="massage_tool" params="first_part_name second_part_name">
+  <link name="${first_part_name}">
+    	<visual>
+    		<origin rpy="0 0 0" xyz="0 0 0" />
+      	<geometry>
+        		<cylinder length="0.04" radius="0.01"/>
+      	</geometry>
+		 <material name="gray">
+		   <color rgba="0.5 0.5 0.5 1"/>
+		 </material>
+    </visual>
+    <inertial>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <mass value ="0.1" />
+        <inertia ixx="1.6e-05" ixy="0" ixz="0" iyy="1.6e-05" iyz="0" izz="6e-06"/>
+    </inertial>
+        <!-- Added on [16-2-24]. Checked visually by executing: $ roslaunch smm_ros_gazebo_pkg smm_ros_gazebo.launch -->
+    <collision>
+    		<origin rpy="0 0 0" xyz="0 0 0" />
+      	<geometry>
+        		<cylinder length="0.04" radius="0.01"/>
+      	</geometry>
+    </collision> 
+  </link>
+  <joint name="${first_part_name}__${second_part_name}" type="fixed">
+    <origin rpy="0 0 0" xyz="0 0 -0.025" />
+    <parent link="${first_part_name}"/>
+    <child link="${second_part_name}"/>
+  </joint>
+  <link name="${second_part_name}">
+    <visual>
+    		<origin rpy="0 0 0" xyz="0 0 0" />
+      	<geometry>
+        		<sphere radius="0.025"/>
+      	</geometry>
+		 <material name="gray">
+		   <color rgba="0.5 0.5 0.5 1"/>
+		 </material>
+    </visual>
+    <inertial>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <mass value ="0.1" />
+        <inertia ixx="2.5e-05" ixy="0" ixz="0" iyy="2.5e-05" iyz="0" izz="2.5e-05"/>
+    </inertial> 
+        <!-- Added on [16-2-24]. Checked visually by executing: $ roslaunch smm_ros_gazebo_pkg smm_ros_gazebo.launch -->
+    <collision>
+    		<origin rpy="0 0 0" xyz="0 0 0" />
+      	<geometry>
+        		<sphere radius="0.025"/>
+      	</geometry>
+    </collision>        
+  </link>
+</xacro:macro>
+
+<!-- MASSAGE-TOOL-STL -->
+<xacro:macro name="massage_tool_stl" params="name">
+	<link name="${name}">
+	    <inertial>
+	      <origin rpy="0 0 0" xyz="0 0 0.0378"/>
+	      <mass value ="0.211" />
+	      <inertia ixx="6.414e-005" ixy="0" ixz="0" iyy="6.414e-005" iyz="0" izz="4.986e-005"/>
+	    </inertial>
+	    <visual>
+	      <origin rpy="0 0 0" xyz="0 0 0.020"/>
+	      <geometry>
+	        <mesh filename="package://smm_ros_gazebo_pkg/meshes/massage_tool.stl" scale="0.001 0.001 0.001"/>
+	      </geometry>
+	      <material name="Porcelain">
+	        <!-- Color Pick: http://www.flatuicolorpicker.com/grey-rgba-color-model/ -->
+	        <color rgba="0.9254 0.9412 0.9413 1"/>
+	      </material>
+	    </visual>
+	<!-- Added on [16-2-24]. Checked visually by executing: $ roslaunch smm_ros_gazebo_pkg smm_ros_gazebo.launch -->
+    	<collision>
+    		<origin rpy="0 0 0" xyz="0 0 0.040" />
+      		<geometry>
+        		  <!--cylinder length="0.065" radius="0.025"/-->
+        		  <sphere radius="0.025"/>
+      		</geometry>
+    	</collision> 
+	</link>
+</xacro:macro>
+
+</robot>

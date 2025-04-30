@@ -1,0 +1,6 @@
+<launch>
+  <arg name="tcp_output_file" default="extract_zero_tcp_default.yaml"/>
+  <node name="tcp_extractor_kdl" pkg="smm_synthesis" type="tcp_extractor_kdl" output="screen">
+    <param name="output_file" value="$(arg tcp_output_file)" />
+  </node>
+</launch>

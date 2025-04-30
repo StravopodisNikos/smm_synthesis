@@ -1,0 +1,7 @@
+<launch>
+  <arg name="com_output_file" default="extract_zero_com.yaml"/>
+
+  <node name="com_extractor_kdl" pkg="smm_synthesis" type="com_extractor_kdl" output="screen">
+    <param name="output_file" value="$(arg com_output_file)" />
+  </node>
+</launch>

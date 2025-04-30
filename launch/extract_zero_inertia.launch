@@ -1,0 +1,7 @@
+<launch>
+  <arg name="inertia_output_file" default="extract_zero_inertia.yaml"/>
+
+  <node name="inertia_extractor_kdl" pkg="smm_synthesis" type="inertia_extractor_kdl" output="screen">
+    <param name="output_file" value="$(arg inertia_output_file)" />
+  </node>
+</launch>
