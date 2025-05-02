@@ -5,6 +5,7 @@
     <arg name="com_output_file"   default="master_test1_arg2_default.yaml"/>
     <arg name="inertia_output_file"   default="master_test1_arg3_default.yaml"/>
     <arg name="tcp_output_file"   default="master_test1_arg4_default.yaml"/>
+    <arg name="passive_frame_output_file" default="master_test1_arg5_default.yaml"/>
 
     <!-- 1. Include the robot visualization launch -->
     <include file="$(find smm_synthesis)/launch/robot_visualization.launch" />
@@ -31,4 +32,14 @@
 
     <!-- 6. Node to extract the active joints twists of the loaded structure+anatomy -->
     <include file="$(find smm_synthesis)/launch/extract_active_twists.launch" />
+
+    <!-- 7. Include the extract passive frames launch -->
+    <rosparam file="$(find smm_synthesis)/config/yaml/assembly.yaml" command="load" />
+    <include file="$(find smm_synthesis)/launch/extract_passive_frames.launch">
+        <arg name="passive_frame_output_file" value="$(arg passive_frame_output_file)" />
+    </include>   
+
+    <!-- 8. Node to extract the passive joints twists of the loaded structure+anatomy -->
+    <include file="$(find smm_synthesis)/launch/extract_passive_twists.launch" /> 
+
 </launch>

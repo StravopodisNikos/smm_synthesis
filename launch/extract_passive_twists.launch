@@ -1,0 +1,6 @@
+<launch>
+  <arg name="input_file" default="gspj0.yaml"/>
+  <node name="passive_twist_extractor_screws" pkg="smm_synthesis" type="passive_twist_extractor_screws" output="screen">
+    <param name="input_file" value="$(arg input_file)" />
+  </node>
+</launch>

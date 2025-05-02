@@ -1,0 +1,9 @@
+<launch>
+  <arg name="passive_frame_output_file" default="extract_passive_frames_default.yaml"/>
+
+  <!-- <rosparam file="$(find smm_synthesis)/config/yaml/assembly.yaml" command="load" /> --> <!-- moved to master launch -->
+
+  <node name="passive_frame_extractor_kdl" pkg="smm_synthesis" type="passive_frame_extractor_kdl" output="screen">
+    <param name="output_file" value="$(arg passive_frame_output_file)" />
+  </node>
+</launch>

@@ -48,9 +48,9 @@ int main(int argc, char** argv)
         // Extract omega
         Eigen::Vector3d omega;
         if (frame_name == "base_link")
-            omega = T.block<3,1>(0,2);  // Z axis
+            omega = T.block<3,1>(0,2);  // Z axis is the local rotation axis for configuration
         else
-            omega = T.block<3,1>(0,0);  // X axis
+            omega = T.block<3,1>(0,0);  // X axis is the local rotation axis for configuration 
 
         Eigen::Matrix<double, 6, 1> twist = kin.createTwist(omega, q);
               
