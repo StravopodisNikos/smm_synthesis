@@ -79,7 +79,7 @@ int main(int argc, char** argv)
 
     YAML::Emitter out;
     out << YAML::BeginMap;
-    out << YAML::Key << "tcp_frame" << YAML::Value << YAML::BeginSeq;
+    out << YAML::Key << "gst0" << YAML::Value << YAML::BeginSeq;
     for (int i = 0; i < 4; ++i)
         for (int j = 0; j < 4; ++j)
             out << tf_matrix(i, j);

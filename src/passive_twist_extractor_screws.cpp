@@ -6,16 +6,20 @@
 #include <iostream>
 #include <smm_screws/ScrewsKinematics.h>
 
+// Run for test:
+// $ rosrun smm_synthesis passive_twist_extractor_screws _input_file:=gspj0.yaml 
+// OR
+// $ roslaunch smm_synthesis extract_passive_twists.launch input_file:=gspj0.yaml
+
 int main(int argc, char** argv)
 {
-    ros::init(argc, argv, "passive_twists_extractor_screws");
+    ros::init(argc, argv, "passive_twist_extractor_screws");
     ros::NodeHandle nh("~");
 
-    // Read assembly structure parameters
+    // Read structure parameters
     std::string structure_file = ros::package::getPath("smm_synthesis") + "/config/yaml/assembly.yaml";
     YAML::Node assembly = YAML::LoadFile(structure_file);
 
-    // Determine which passive frames are active based on parameters
     std::map<std::string, std::string> frame_map = {
         {"s2", "metalink_1_pseudo1_b"},
         {"s3", "metalink_1_pseudo2_b"},
@@ -36,7 +40,7 @@ int main(int argc, char** argv)
         return -1;
     }
 
-    // Read param for input_file (e.g., gspj0.yaml)
+    // Load input file
     std::string input_file;
     if (!nh.getParam("input_file", input_file))
     {
@@ -50,6 +54,7 @@ int main(int argc, char** argv)
     ScrewsKinematics kin;
     std::map<std::string, Eigen::Matrix<double, 6, 1>> twists;
 
+    int index = 0;
     for (const auto& frame_name : active_frames)
     {
         if (!frame_data[frame_name])
@@ -65,20 +70,19 @@ int main(int argc, char** argv)
             continue;
         }
 
-        // Reconstruct 4x4 matrix
         Eigen::Matrix4d T = Eigen::Matrix4d::Identity();
         for (int i = 0; i < 16; ++i)
             T(i / 4, i % 4) = values[i].as<double>();
 
-        // Extract ω and q (column 1 and column 4 respectively)
-        Eigen::Vector3d omega = T.block<3, 1>(0, 0); // X axis is the local rotation axis for metamorphosis
+        Eigen::Vector3d omega = T.block<3, 1>(0, 0);
         Eigen::Vector3d q = T.block<3, 1>(0, 3);
 
         Eigen::Matrix<double, 6, 1> twist = kin.createTwist(omega, q);
-        twists[frame_name] = twist;
+        std::string twist_key = "xi_p" + std::to_string(index++) + "_0";
+        twists[twist_key] = twist;
 
-        std::cout << "\nFrame: " << frame_name << "\n";
-        std::cout << "Twist: \n" << twist.transpose() << "\n";
+        std::cout << "\nFrame: " << frame_name << " → " << twist_key;
+        std::cout << "\nTwist: " << twist.transpose() << "\n";
     }
 
     // Save to xi_pi_anat.yaml
@@ -93,7 +97,7 @@ int main(int argc, char** argv)
     }
     out << YAML::EndMap;
 
-    std::string output_path = ros::package::getPath("smm_synthesis") + "/config/yaml/xi_pi_anat.yaml";
+    std::string output_path = ros::package::getPath("smm_synthesis") + "/config/yaml/xi_pj_anat.yaml";
     std::ofstream fout(output_path);
     fout << out.c_str();
     fout.close();

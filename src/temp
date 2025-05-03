@@ -3,91 +3,130 @@
 #include <urdf/model.h>
 #include <kdl_parser/kdl_parser.hpp>
 #include <kdl/tree.hpp>
+#include <kdl/chain.hpp>
 #include <kdl/frames.hpp>
 #include <Eigen/Dense>
 #include <yaml-cpp/yaml.h>
 #include <fstream>
-#include <map>
 #include <string>
 #include <vector>
+#include <map>
 
-Eigen::Matrix4d KDLFrameToEigen(const KDL::Frame& frame) {
+Eigen::Matrix4d KDLFrameToEigen(const KDL::Frame& frame)
+{
     Eigen::Matrix4d mat = Eigen::Matrix4d::Identity();
-    for (int i = 0; i < 3; ++i) {
-        mat.block<1,3>(i,0) = Eigen::Vector3d(frame.M(i,0), frame.M(i,1), frame.M(i,2)).transpose();
-    }
-    mat.block<3,1>(0,3) = Eigen::Vector3d(frame.p.x(), frame.p.y(), frame.p.z());
-    return mat;
-}
 
-int main(int argc, char** argv) {
-    ros::init(argc, argv, "passive_frame_extractor_kdl");
-    ros::NodeHandle nh("~");  // Private NodeHandle for private parameters
-    ros::NodeHandle nh_global("/");  // global root master file
-
-    // Load output filename
-    std::string output_filename;
-    if (!nh.getParam("output_file", output_filename)) {
-        ROS_ERROR("No output_file parameter provided.");
-        return -1;
-    }
-
-    // Load structure parameters
-    int s2, s3, s5, s6;
-    if (!nh_global.getParam("s2", s2) ||
-        !nh_global.getParam("s3", s3) ||
-        !nh_global.getParam("s5", s5) ||
-        !nh_global.getParam("s6", s6)) {
-        ROS_ERROR("Missing one or more structure parameters (s2, s3, s5, s6)");
-        return -1;
-    }
-
-    // Determine which frames to extract
-    std::map<std::string, bool> frame_selection = {
-        {"metalink_1_pseudo1_b", s2 != 9},
-        {"metalink_1_pseudo2_b", s3 != 9},
-        {"metalink_2_pseudo1_b", s5 != 9},
-        {"metalink_2_pseudo2_b", s6 != 9}
-    };
-
-    // Load URDF and create KDL tree
-    urdf::Model model;
-    if (!model.initParam("robot_description")) {
-        ROS_ERROR("Failed to load robot_description");
-        return -1;
-    }
-
-    KDL::Tree kdl_tree;
-    if (!kdl_parser::treeFromUrdfModel(model, kdl_tree)) {
-        ROS_ERROR("Failed to construct KDL tree");
-        return -1;
-    }
-
-    // Map from frame names to transforms
-    std::map<std::string, Eigen::Matrix4d> frame_map;
-    for (const auto& segment : kdl_tree.getSegments()) {
-        const std::string& name = segment.second.segment.getName();
-        if (frame_selection.count(name) && frame_selection[name]) {
-            KDL::Frame frame = segment.second.segment.pose(0.0);  // Zero joint pos
-            Eigen::Matrix4d mat = KDLFrameToEigen(frame);
-            frame_map[name] = mat;
+    // Rotation part
+    for (int i = 0; i < 3; ++i)
+    {
+        for (int j = 0; j < 3; ++j)
+        {
+            mat(i,j) = frame.M(i,j);
         }
     }
 
-    // Print to terminal
-    for (const auto& entry : frame_map) {
-        std::cout << "\nFrame: " << entry.first << "\n" << entry.second << "\n";
+    // Translation part
+    mat(0,3) = frame.p.x();
+    mat(1,3) = frame.p.y();
+    mat(2,3) = frame.p.z();
+
+    return mat;
+}
+
+int main(int argc, char** argv)
+{
+    ros::init(argc, argv, "frame_extractor_kdl");
+    ros::NodeHandle nh("~");  // Private NodeHandle for private parameters
+
+    // 1. Get output YAML file name from parameter
+    std::string output_filename;
+    if (!nh.getParam("output_file", output_filename))
+    {
+        ROS_ERROR("No output_file parameter given. Please specify where to save the YAML!");
+        return -1;
     }
 
-    // Save to YAML
+    // 2. Optional: wait a bit for robot_state_publisher to fully load
+    ros::Duration(2.0).sleep();
+    ROS_INFO("Starting frame extraction...");
+
+    // 3. Load URDF from parameter server
+    urdf::Model model;
+    if (!model.initParam("robot_description"))
+    {
+        ROS_ERROR("Failed to parse URDF from parameter server");
+        return -1;
+    }
+
+    // 4. Create KDL tree
+    KDL::Tree kdl_tree;
+    if (!kdl_parser::treeFromUrdfModel(model, kdl_tree))
+    {
+        ROS_ERROR("Failed to construct KDL tree");
+        return -1;
+    }
+    ROS_INFO("Successfully loaded KDL Tree!");
+
+    // 5. Extract root name (could be "world" or "base_link")
+    std::string root_name = kdl_tree.getRootSegment()->first;
+    ROS_INFO_STREAM("Root link detected: " << root_name);
+
+    // 6. Find active joints only and compute their world frames
+    std::map<std::string, Eigen::Matrix4d> frame_map;
+
+    for (const auto& segment : kdl_tree.getSegments())
+    {
+        const auto& seg = segment.second.segment;
+        if (seg.getJoint().getType() != KDL::Joint::None)  // Only active joints
+        {
+            std::string joint_name = seg.getName();
+
+            // Create a KDL chain from root to this joint
+            KDL::Chain chain;
+            if (!kdl_tree.getChain(root_name, joint_name, chain))
+            {
+                ROS_ERROR_STREAM("Failed to extract chain from " << root_name << " to " << joint_name);
+                continue;
+            }
+
+            // Compute forward kinematics along the chain
+            KDL::Frame frame = KDL::Frame::Identity();
+            for (unsigned int i = 0; i < chain.getNrOfSegments(); ++i)
+            {
+                const KDL::Segment& chain_seg = chain.getSegment(i);
+                frame = frame * chain_seg.pose(0.0);  // 0 angle at home configuration
+            }
+
+            Eigen::Matrix4d mat = KDLFrameToEigen(frame);
+            frame_map[joint_name] = mat;
+        }
+    }
+
+    ROS_INFO("Found %lu active joints.", frame_map.size());
+
+    // 7. Print matrices
+    for (const auto& entry : frame_map)
+    {
+        std::cout << "\nFrame: " << entry.first << "\n";
+        std::cout << entry.second << "\n";
+    }
+
+    // 8. Build save path inside your package
     std::string save_path = ros::package::getPath("smm_synthesis") + "/config/yaml/" + output_filename;
+
+    // 9. Save matrices into YAML
     YAML::Emitter out;
     out << YAML::BeginMap;
-    for (const auto& entry : frame_map) {
+    for (const auto& entry : frame_map)
+    {
         out << YAML::Key << entry.first << YAML::Value << YAML::BeginSeq;
         for (int i = 0; i < 4; ++i)
+        {
             for (int j = 0; j < 4; ++j)
+            {
                 out << entry.second(i,j);
+            }
+        }
         out << YAML::EndSeq;
     }
     out << YAML::EndMap;
@@ -96,6 +135,8 @@ int main(int argc, char** argv) {
     fout << out.c_str();
     fout.close();
 
-    ROS_INFO_STREAM("Passive frames saved to: " << save_path);
+    ROS_INFO_STREAM("Frames saved to: " << save_path);
+
+    ros::spin();
     return 0;
 }
