@@ -63,7 +63,7 @@ int main(int argc, char** argv)
 
         // Extract omega
         Eigen::Vector3d omega;
-        if (frame_name == "base_link")
+        if (frame_name == "gsa00")
             omega = T.block<3,1>(0,2);  // Z axis
         else
             omega = T.block<3,1>(0,0);  // X axis

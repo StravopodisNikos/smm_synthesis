@@ -1,0 +1,52 @@
+<!-- [26-4-25] Loads SMM robot from xacro and exctracts geometry/inertia properties -->
+<!-- $ roslaunch smm_synthesis master_smm_synthesis.launch frame_output_file:=NAME_OF_YAML com_output_file:=NAME_OF_YAML ... ... -->
+<!-- HOW TO LAUNCH: $ roslaunch smm_synthesis master_smm_synthesis.launch frame_output_file:=gsai0.yaml com_output_file:=gsli0.yaml inertia_output_file:=Mscomi0.yaml tcp_output_file:=gst0.yaml passive_frame_output_file:=gspj0.yaml -->
+<launch>
+    <arg name="frame_output_file" default="master_test1_arg1_default.yaml"/>
+    <arg name="com_output_file"   default="master_test1_arg2_default.yaml"/>
+    <arg name="inertia_output_file"   default="master_test1_arg3_default.yaml"/>
+    <arg name="tcp_output_file"   default="master_test1_arg4_default.yaml"/>
+    <arg name="passive_frame_output_file" default="master_test1_arg5_default.yaml"/>
+
+    <!-- 1. Include the robot visualization launch -->
+    <!--<include file="$(find smm_synthesis)/launch/robot_visualization.launch" />-->
+
+    <!-- 2. Include the extract frames launch -->
+    <include file="$(find smm_synthesis)/launch/extract_zero_frames.launch">
+        <arg name="frame_output_file" value="$(arg frame_output_file)" />
+    </include>
+
+    <!-- 3. Include the extract COM frames launch -->
+    <include file="$(find smm_synthesis)/launch/extract_zero_com.launch">
+        <arg name="com_output_file" value="$(arg com_output_file)" />
+    </include>
+
+    <!-- 4. Include the extract Inertia tensor launch -->
+    <include file="$(find smm_synthesis)/launch/extract_zero_inertia.launch">
+        <arg name="inertia_output_file" value="$(arg inertia_output_file)" />
+    </include>
+
+    <!-- 5. Include the extract TCP frame launch -->
+    <include file="$(find smm_synthesis)/launch/extract_zero_tcp.launch">
+        <arg name="tcp_output_file" value="$(arg tcp_output_file)" />
+    </include>
+
+    <!-- 6. Node to extract the active joints twists of the loaded structure+anatomy -->
+    <include file="$(find smm_synthesis)/launch/extract_active_twists.launch" />
+
+    <!-- 7. Include the extract passive frames launch -->
+    <rosparam file="$(find smm_synthesis)/config/yaml/assembly.yaml" command="load" />
+    <include file="$(find smm_synthesis)/launch/extract_passive_frames.launch">
+        <arg name="passive_frame_output_file" value="$(arg passive_frame_output_file)" />
+    </include>   
+
+    <!-- 8. Node to extract the passive joints twists of the loaded structure+anatomy -->
+    <include file="$(find smm_synthesis)/launch/extract_passive_twists.launch" /> 
+
+    <!-- 9. Node to extract the pseudojoint angles of the loaded anatomy -->
+    <node name="pseudo_angle_extractor" pkg="smm_synthesis" type="pseudo_angle_extractor" output="screen" />
+
+    <!-- 10. Node to Set to ROS_PARAMETER_SERVER the STRUCTURE_DIGIT parameter-->
+    <node name="structure_digit_setter" pkg="smm_synthesis" type="structure_digit_setter" output="screen" />
+    
+</launch>

@@ -1,5 +1,6 @@
 <!-- [26-4-25] Loads SMM robot from xacro and exctracts geometry/inertia properties -->
-<!-- $ roslaunch smm_synthesis master_test1.launch frame_output_file:=NAME_OF_YAML com_output_file:=NAME_OF_YAML ... ... -->
+<!-- $ roslaunch smm_synthesis test_smm_synthesis.launch frame_output_file:=NAME_OF_YAML com_output_file:=NAME_OF_YAML ... ... -->
+<!-- HOW TO LAUNCH: $ roslaunch smm_synthesis test_smm_synthesis.launch frame_output_file:=gsai0.yaml com_output_file:=gsli0.yaml inertia_output_file:=Mscomi0.yaml tcp_output_file:=gst0.yaml passive_frame_output_file:=gspj0.yaml -->
 <launch>
     <arg name="frame_output_file" default="master_test1_arg1_default.yaml"/>
     <arg name="com_output_file"   default="master_test1_arg2_default.yaml"/>
@@ -42,4 +43,10 @@
     <!-- 8. Node to extract the passive joints twists of the loaded structure+anatomy -->
     <include file="$(find smm_synthesis)/launch/extract_passive_twists.launch" /> 
 
+    <!-- 9. Node to extract the pseudojoint angles of the loaded anatomy -->
+    <node name="pseudo_angle_extractor" pkg="smm_synthesis" type="pseudo_angle_extractor" output="screen" />
+
+    <!-- 10. Node to Set to ROS_PARAMETER_SERVER the STRUCTURE_DIGIT parameter-->
+    <node name="structure_digit_setter" pkg="smm_synthesis" type="structure_digit_setter" output="screen" />
+    
 </launch>

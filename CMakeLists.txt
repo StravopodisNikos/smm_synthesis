@@ -157,6 +157,8 @@ add_executable(tcp_extractor_kdl src/tcp_extractor_kdl.cpp)
 add_executable(twist_extractor_screws src/twist_extractor_screws.cpp)
 add_executable(passive_frame_extractor_kdl src/passive_frame_extractor_kdl.cpp)
 add_executable(passive_twist_extractor_screws src/passive_twist_extractor_screws.cpp)
+add_executable(pseudo_angle_extractor src/pseudo_angle_extractor.cpp)
+add_executable(structure_digit_setter src/structure_digit_setter.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -179,6 +181,8 @@ target_link_libraries(tcp_extractor_kdl ${catkin_LIBRARIES} yaml-cpp ${orocos_kd
 target_link_libraries(twist_extractor_screws ${catkin_LIBRARIES} smm_screws yaml-cpp)
 target_link_libraries(passive_frame_extractor_kdl ${catkin_LIBRARIES} yaml-cpp ${orocos_kdl_LIBRARIES})
 target_link_libraries(passive_twist_extractor_screws ${catkin_LIBRARIES} smm_screws yaml-cpp)
+target_link_libraries(pseudo_angle_extractor ${catkin_LIBRARIES} yaml-cpp)
+target_link_libraries(structure_digit_setter ${catkin_LIBRARIES} yaml-cpp)
 
 # [15-4-25] How to link libraries if needed 
 #target_link_libraries(structure_optimizer

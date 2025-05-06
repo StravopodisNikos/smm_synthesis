@@ -28,8 +28,8 @@ active2pseudo_origin_p_4_2: 1.5708
 active2pseudo_origin_p_4_3: 1.5708
 ## pseudojoints' setting
 # MATLAB VARIABLE: [qp_xacro_user_given->anatomy]
-pseudo1_angle:   0.0000
+pseudo1_angle:   0.7854
 pseudo2_angle:   0.0000
-pseudo3_angle:   0.0000
+pseudo3_angle:   0.7854
 pseudo4_angle:   -0.7854
 
