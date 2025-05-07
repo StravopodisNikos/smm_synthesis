@@ -50,10 +50,10 @@ int main(int argc, char** argv)
         return -1;
     }
 
-    std::string root_name = kdl_tree.getRootSegment()->first;
-    ROS_INFO_STREAM("Root link detected: " << root_name);
+    std::string root_name = "base_link";
+    ROS_INFO_STREAM("Setting root frame to: " << root_name << " with rotz(-pi) compensation");
 
-    // Define the exact link name → internal name mapping
+    // Map of URDF link → internal name
     std::map<std::string, std::string> frame_name_map = {
         {"base_link", "gsa00"},
         {"active_module_b_1", "gsa10"},
@@ -61,6 +61,11 @@ int main(int argc, char** argv)
     };
 
     std::map<std::string, Eigen::Matrix4d> extracted_frames;
+
+    // Define rotz(-pi)
+    Eigen::Matrix4d Rz_pi = Eigen::Matrix4d::Identity();
+    Rz_pi(0,0) = -1.0;
+    Rz_pi(1,1) = -1.0;
 
     for (const auto& pair : frame_name_map)
     {
@@ -75,12 +80,16 @@ int main(int argc, char** argv)
 
         KDL::Frame frame = KDL::Frame::Identity();
         for (unsigned int i = 0; i < chain.getNrOfSegments(); ++i) {
-            const KDL::Segment& chain_seg = chain.getSegment(i);
-            frame = frame * chain_seg.pose(0.0);
+            const KDL::Segment& segment = chain.getSegment(i);
+            frame = frame * segment.pose(0.0);
         }
 
-        extracted_frames[internal_name] = KDLFrameToEigen(frame);
-        ROS_INFO_STREAM("Mapped URDF frame '" << urdf_frame << "' to '" << internal_name << "'");
+        Eigen::Matrix4d tf = KDLFrameToEigen(frame);
+        Eigen::Matrix4d transformed = Rz_pi * tf;
+
+        extracted_frames[internal_name] = transformed;
+
+        ROS_INFO_STREAM("Mapped URDF frame '" << urdf_frame << "' to '" << internal_name << "' with rotz(-pi)");
     }
 
     // Save to YAML

@@ -15,10 +15,8 @@ Eigen::Matrix4d KDLFrameToEigen(const KDL::Frame& frame)
 {
     Eigen::Matrix4d mat = Eigen::Matrix4d::Identity();
     for (int i = 0; i < 3; ++i)
-    {
         for (int j = 0; j < 3; ++j)
             mat(i, j) = frame.M(i, j);
-    }
     mat(0, 3) = frame.p.x();
     mat(1, 3) = frame.p.y();
     mat(2, 3) = frame.p.z();
@@ -32,8 +30,7 @@ int main(int argc, char** argv)
     ros::NodeHandle nh_global("/");
 
     std::string output_filename;
-    if (!nh_private.getParam("output_file", output_filename))
-    {
+    if (!nh_private.getParam("output_file", output_filename)) {
         ROS_ERROR("No output_file parameter given.");
         return -1;
     }
@@ -42,8 +39,7 @@ int main(int argc, char** argv)
     if (!nh_global.getParam("s2", s2) ||
         !nh_global.getParam("s3", s3) ||
         !nh_global.getParam("s5", s5) ||
-        !nh_global.getParam("s6", s6))
-    {
+        !nh_global.getParam("s6", s6)) {
         ROS_ERROR("Missing one or more structure parameters (s2, s3, s5, s6).");
         return -1;
     }
@@ -55,27 +51,31 @@ int main(int argc, char** argv)
     if (s6 != 9) frames_to_extract.push_back("metalink_2_pseudo2_b");
 
     urdf::Model model;
-    if (!model.initParam("robot_description"))
-    {
+    if (!model.initParam("robot_description")) {
         ROS_ERROR("Failed to parse URDF from parameter server.");
         return -1;
     }
 
     KDL::Tree kdl_tree;
-    if (!kdl_parser::treeFromUrdfModel(model, kdl_tree))
-    {
+    if (!kdl_parser::treeFromUrdfModel(model, kdl_tree)) {
         ROS_ERROR("Failed to construct KDL tree.");
         return -1;
     }
-    std::string root_name = kdl_tree.getRootSegment()->first;
-    ROS_INFO_STREAM("Root link detected: " << root_name);
+
+    std::string root_name = "base_link";
+    ROS_INFO_STREAM("Setting root frame to: " << root_name << " with rotz(-pi) compensation");
 
     std::map<std::string, Eigen::Matrix4d> extracted_transforms;
+
+    // Define rotz(-pi)
+    Eigen::Matrix4d Rz_pi = Eigen::Matrix4d::Identity();
+    Rz_pi(0,0) = -1.0;
+    Rz_pi(1,1) = -1.0;
+
     for (const auto& frame_name : frames_to_extract)
     {
         KDL::Chain chain;
-        if (!kdl_tree.getChain(root_name, frame_name, chain))
-        {
+        if (!kdl_tree.getChain(root_name, frame_name, chain)) {
             ROS_ERROR_STREAM("Failed to extract chain from " << root_name << " to " << frame_name);
             continue;
         }
@@ -86,16 +86,14 @@ int main(int argc, char** argv)
             q(i) = 0.0;
 
         KDL::Frame tf;
-        if (fk_solver.JntToCart(q, tf) >= 0)
-        {
+        if (fk_solver.JntToCart(q, tf) >= 0) {
             Eigen::Matrix4d tf_eigen = KDLFrameToEigen(tf);
-            extracted_transforms[frame_name] = tf_eigen;
+            Eigen::Matrix4d transformed = Rz_pi * tf_eigen;
+            extracted_transforms[frame_name] = transformed;
 
-            std::cout << "\n Spatial Transform (" << root_name << " -> " << frame_name << "):\n";
-            std::cout << tf_eigen << "\n";
-        }
-        else
-        {
+            std::cout << "\n Spatial Transform (" << root_name << " -> " << frame_name << ") with rotz(-pi):\n";
+            std::cout << transformed << "\n";
+        } else {
             ROS_WARN_STREAM("FK failed for frame: " << frame_name);
         }
     }
@@ -117,6 +115,6 @@ int main(int argc, char** argv)
     fout << out.c_str();
     fout.close();
 
-    ROS_INFO_STREAM("Saved selected frame transforms to: " << path);
+    ROS_INFO_STREAM("Saved selected passive frame transforms to: " << path);
     return 0;
 }

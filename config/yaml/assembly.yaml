@@ -2,16 +2,16 @@
 # MATLAB VARIABLE: [structure], MATLAB FILE: [insert_robot_gazebo]
 s1: 0   # default
 s2: 21  #cannot be 31 or 9
-s3: 9  #cannot be 9 if s2 is 9 #cannot be 31 if s2 is 9
+s3: 31  #cannot be 9 if s2 is 9 #cannot be 31 if s2 is 9
 s4: 0
-s5: 21
+s5: 31
 s6: 31  #cannot be 9 if s5 is 9
 s7: 0
 ## assembly parameters setting
 # MATLAB VARIABLE: [assembly_parameters], MATLAB FILE: [insert_robot_gazebo]
 #synthetic_origin_xzp_1_123: -> x(4-6):Here syn4(under 21) or syn2(back31) are passed
-synthetic_origin_xzp_1_x: 0.0000
-synthetic_origin_xzp_1_z: 0.0000   # when 3.14 is given for pitch angle(below) in overleaf table the sign HERE must change!
+synthetic_origin_xzp_1_x: -0.0500
+synthetic_origin_xzp_1_z: 0.0500   # when 3.14 is given for pitch angle(below) in overleaf table the sign HERE must change!
 synthetic_origin_xzp_1_p: 0.0000
 #synthetic_origin_xzp_2_123: -> x(7-9)
 synthetic_origin_xzp_2_x: 0.0000
@@ -28,8 +28,8 @@ active2pseudo_origin_p_4_2: 1.5708
 active2pseudo_origin_p_4_3: 1.5708
 ## pseudojoints' setting
 # MATLAB VARIABLE: [qp_xacro_user_given->anatomy]
-pseudo1_angle:   0.7854
-pseudo2_angle:   0.0000
+pseudo1_angle:   1.5708
+pseudo2_angle:   -1.5708
 pseudo3_angle:   0.7854
 pseudo4_angle:   -0.7854
 
