@@ -1,97 +1,152 @@
-#include <ros/ros.h>
-#include <yaml-cpp/yaml.h>
-#include <ros/package.h>
-#include <Eigen/Dense>
+#include <memory>
+#include <string>
 #include <fstream>
 #include <iostream>
 #include <map>
-#include <smm_screws/ScrewsKinematics.h>
 
-// Run for test:
-// $ rosrun smm_synthesis twist_extractor_screws _input_file:=gsai0.yaml 
-// OR
-// $ roslaunch smm_synthesis extract_active_twists.launch input_file:=gsai0.yaml
+#include <Eigen/Dense>
+#include <yaml-cpp/yaml.h>
 
-int main(int argc, char** argv)
+#include "rclcpp/rclcpp.hpp"
+#include "ament_index_cpp/get_package_share_directory.hpp"
+
+// Include the Screws library (ROS2 version)
+#include "smm_screws/core/ScrewsKinematics.h"
+
+// Run for test (ROS2):
+// $ ros2 run smm_synthesis twist_extractor_screws --ros-args -p input_file:=gsai0.yaml
+
+int main(int argc, char ** argv)
 {
-    ros::init(argc, argv, "twist_extractor_screws");
-    ros::NodeHandle nh("~");
+  rclcpp::init(argc, argv);
+  auto node = rclcpp::Node::make_shared("twist_extractor_screws");
 
-    // Get YAML file name from param
-    std::string yaml_file;
-    if (!nh.getParam("input_file", yaml_file)) {
-        ROS_ERROR("No input_file param provided.");
-        return -1;
+  // --- Get YAML file name from ROS 2 parameter ---
+  node->declare_parameter<std::string>("input_file", "");
+  std::string yaml_file;
+  node->get_parameter("input_file", yaml_file);
+
+  if (yaml_file.empty()) {
+    RCLCPP_ERROR(
+      node->get_logger(),
+      "No 'input_file' parameter provided. Use --ros-args -p input_file:=gsai0.yaml");
+    rclcpp::shutdown();
+    return 1;
+  }
+
+  // --- Resolve package share dir instead of ros::package::getPath ---
+  std::string share_dir;
+  try {
+    share_dir = ament_index_cpp::get_package_share_directory("smm_synthesis");
+  } catch (const std::exception & e) {
+    RCLCPP_ERROR(
+      node->get_logger(),
+      "Could not get package share directory for 'smm_synthesis': %s", e.what());
+    rclcpp::shutdown();
+    return 1;
+  }
+
+  std::string input_path  = share_dir + "/config/yaml/" + yaml_file;
+  std::string output_path = share_dir + "/config/yaml/xi_ai_anat.yaml";
+
+  // --- Load input YAML ---
+  YAML::Node root;
+  try {
+    root = YAML::LoadFile(input_path);
+  } catch (const std::exception & e) {
+    RCLCPP_ERROR(
+      node->get_logger(),
+      "Failed to load YAML file '%s': %s", input_path.c_str(), e.what());
+    rclcpp::shutdown();
+    return 1;
+  }
+
+  ScrewsKinematics kin;
+
+  // store twists as float-based Eigen (to match ScrewsKinematics)
+  std::map<std::string, Eigen::Matrix<float, 6, 1>> twists;
+
+  // Map frame name in YAML -> twist key name in output YAML
+  std::map<std::string, std::string> twist_name_map = {
+    {"gsa00", "xi_a0_0"},
+    {"gsa10", "xi_a1_0"},
+    {"gsa20", "xi_a2_0"}
+  };
+
+  for (const auto & pair : twist_name_map) {
+    const std::string & frame_name = pair.first;
+    const std::string & twist_key  = pair.second;
+
+    if (!root[frame_name]) {
+      RCLCPP_WARN(
+        node->get_logger(),
+        "Frame '%s' not found in input YAML '%s'. Skipping.",
+        frame_name.c_str(), input_path.c_str());
+      continue;
     }
 
-    std::string input_path = ros::package::getPath("smm_synthesis") + "/config/yaml/" + yaml_file;
-    YAML::Node root = YAML::LoadFile(input_path);
-
-    ScrewsKinematics kin;
-    std::map<std::string, Eigen::Matrix<double, 6, 1>> twists;
-
-    // Define mapping from frame name to internal twist variable
-    std::map<std::string, std::string> twist_name_map = {
-        {"gsa00", "xi_a0_0"},
-        {"gsa10", "xi_a1_0"},
-        {"gsa20", "xi_a2_0"}
-    };
-
-    for (const auto& pair : twist_name_map)
-    {
-        const std::string& frame_name = pair.first;
-        const std::string& twist_key = pair.second;
-
-        if (!root[frame_name]) {
-            ROS_WARN_STREAM("Frame " << frame_name << " not found in input YAML.");
-            continue;
-        }
-
-        const YAML::Node& values = root[frame_name];
-        if (!values.IsSequence() || values.size() != 16) {
-            ROS_WARN_STREAM("Skipping " << frame_name << " due to invalid matrix format.");
-            continue;
-        }
-
-        // Convert to Eigen 4x4 matrix
-        Eigen::Matrix4d T = Eigen::Matrix4d::Identity();
-        for (int i = 0; i < 16; ++i)
-            T(i / 4, i % 4) = values[i].as<double>();
-
-        // Extract q
-        Eigen::Vector3d q = T.block<3,1>(0,3);
-
-        // Extract omega
-        Eigen::Vector3d omega;
-        if (frame_name == "gsa00")
-            omega = T.block<3,1>(0,2);  // Z axis
-        else
-            omega = T.block<3,1>(0,0);  // X axis
-
-        Eigen::Matrix<double, 6, 1> twist = kin.createTwist(omega, q);
-        twists[twist_key] = twist;
-
-        std::cout << "\nFrame: " << frame_name << " → " << twist_key;
-        std::cout << "\nTwist: " << twist.transpose() << "\n";
+    const YAML::Node & values = root[frame_name];
+    if (!values.IsSequence() || values.size() != 16) {
+      RCLCPP_WARN(
+        node->get_logger(),
+        "Frame '%s' has invalid matrix format (need 16 elements). Skipping.",
+        frame_name.c_str());
+      continue;
     }
 
-    // Save twists to YAML
-    YAML::Emitter out;
-    out << YAML::BeginMap;
-    for (const auto& pair : twists)
-    {
-        out << YAML::Key << pair.first << YAML::Value << YAML::BeginSeq;
-        for (int i = 0; i < 6; ++i)
-            out << pair.second(i);
-        out << YAML::EndSeq;
+    // --- Convert YAML into Eigen 4x4 (double for parsing) ---
+    Eigen::Matrix4d T = Eigen::Matrix4d::Identity();
+    for (int i = 0; i < 16; ++i) {
+      T(i / 4, i % 4) = values[i].as<double>();
     }
-    out << YAML::EndMap;
 
-    std::string output_path = ros::package::getPath("smm_synthesis") + "/config/yaml/xi_ai_anat.yaml";
-    std::ofstream fout(output_path);
-    fout << out.c_str();
-    fout.close();
+    // Extract q (position)
+    Eigen::Vector3d q_d = T.block<3,1>(0, 3);
 
-    ROS_INFO_STREAM("Twists saved to: " << output_path);
-    return 0;
+    // Extract omega (rotation axis)
+    Eigen::Vector3d omega_d;
+    if (frame_name == "gsa00") {
+      omega_d = T.block<3,1>(0, 2);  // Z axis for base_link
+    } else {
+      omega_d = T.block<3,1>(0, 0);  // X axis for the other joints
+    }
+
+    // Cast to float to match ScrewsKinematics::createTwist signature
+    Eigen::Vector3f q     = q_d.cast<float>();
+    Eigen::Vector3f omega = omega_d.cast<float>();
+
+    Eigen::Matrix<float, 6, 1> twist = kin.createTwist(omega, q);
+    twists[twist_key] = twist;
+
+    std::cout << "\nFrame: " << frame_name << " → " << twist_key;
+    std::cout << "\nTwist: " << twist.transpose() << "\n";
+  }
+
+  // --- Save twists to YAML ---
+  YAML::Emitter out;
+  out << YAML::BeginMap;
+  for (const auto & pair : twists) {
+    out << YAML::Key << pair.first << YAML::Value << YAML::BeginSeq;
+    for (int i = 0; i < 6; ++i) {
+      out << pair.second(i);
+    }
+    out << YAML::EndSeq;
+  }
+  out << YAML::EndMap;
+
+  std::ofstream fout(output_path);
+  if (!fout.is_open()) {
+    RCLCPP_ERROR(
+      node->get_logger(),
+      "Failed to open output YAML '%s' for writing.", output_path.c_str());
+    rclcpp::shutdown();
+    return 1;
+  }
+  fout << out.c_str();
+  fout.close();
+
+  RCLCPP_INFO(node->get_logger(), "Twists saved to: %s", output_path.c_str());
+
+  rclcpp::shutdown();
+  return 0;
 }

@@ -1,34 +1,68 @@
-#include <ros/ros.h>
-#include <yaml-cpp/yaml.h>
-#include <ros/package.h>
+#include <memory>
 #include <string>
 
-int main(int argc, char** argv)
+#include <yaml-cpp/yaml.h>
+
+#include "rclcpp/rclcpp.hpp"
+#include "ament_index_cpp/get_package_share_directory.hpp"
+
+int main(int argc, char ** argv)
 {
-    ros::init(argc, argv, "structure_digit_setter");
-    ros::NodeHandle nh;
+  rclcpp::init(argc, argv);
+  auto node = rclcpp::Node::make_shared("structure_digit_setter");
 
-    std::string yaml_path = ros::package::getPath("smm_synthesis") + "/config/yaml/assembly.yaml";
+  // Locate package share dir
+  std::string share_dir;
+  try {
+    share_dir = ament_index_cpp::get_package_share_directory("smm_synthesis");
+  } catch (const std::exception & e) {
+    RCLCPP_ERROR(
+      node->get_logger(),
+      "Failed to get package share directory for 'smm_synthesis': %s", e.what());
+    rclcpp::shutdown();
+    return 1;
+  }
 
-    YAML::Node assembly = YAML::LoadFile(yaml_path);
-    int s2 = assembly["s2"].as<int>();
-    int s3 = assembly["s3"].as<int>();
-    int s5 = assembly["s5"].as<int>();
-    int s6 = assembly["s6"].as<int>();
+  const std::string yaml_path = share_dir + "/config/yaml/assembly.yaml";
 
-    int count = 0;
-    if (s2 != 9) count++;
-    if (s3 != 9) count++;
-    if (s5 != 9) count++;
-    if (s6 != 9) count++;
+  YAML::Node assembly;
+  try {
+    assembly = YAML::LoadFile(yaml_path);
+  } catch (const std::exception & e) {
+    RCLCPP_ERROR(
+      node->get_logger(),
+      "Failed to load '%s': %s", yaml_path.c_str(), e.what());
+    rclcpp::shutdown();
+    return 1;
+  }
 
-    if (count < 2 || count > 4) {
-        ROS_ERROR_STREAM("[structure_digit_setter] Invalid structure count: " << count);
-        return -1;
-    }
+  int s2 = assembly["s2"].as<int>();
+  int s3 = assembly["s3"].as<int>();
+  int s5 = assembly["s5"].as<int>();
+  int s6 = assembly["s6"].as<int>();
 
-    nh.setParam("/STRUCTURE_DIGIT", count);
-    ROS_INFO_STREAM("[structure_digit_setter] Set STRUCTURE_DIGIT = " << count);
+  int count = 0;
+  if (s2 != 9) count++;
+  if (s3 != 9) count++;
+  if (s5 != 9) count++;
+  if (s6 != 9) count++;
 
-    return 0;
+  if (count < 2 || count > 4) {
+    RCLCPP_ERROR(
+      node->get_logger(),
+      "[structure_digit_setter] Invalid structure count: %d", count);
+    rclcpp::shutdown();
+    return 1;
+  }
+
+  // In ROS2 there is no global param server; this node holds the parameter.
+  node->declare_parameter<int>("STRUCTURE_DIGIT", count);
+  RCLCPP_INFO(
+    node->get_logger(),
+    "[structure_digit_setter] Declared parameter STRUCTURE_DIGIT = %d", count);
+
+  // Keep node alive so others can query the parameter via a param client if needed
+  rclcpp::spin(node);
+  rclcpp::shutdown();
+  return 0;
 }

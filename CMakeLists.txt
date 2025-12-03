@@ -1,246 +1,216 @@
-cmake_minimum_required(VERSION 3.0.2)
+cmake_minimum_required(VERSION 3.8)
 project(smm_synthesis)
 
-## Compile as C++11, supported in ROS Kinetic and newer
-add_compile_options(-std=c++11)
+# Use C++17 (ROS 2 default on most distros)
+if(NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 17)
+endif()
 
-## Find catkin macros and libraries
-## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
-## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS
-  joint_state_publisher
-  robot_state_publisher
-  roscpp
-  rviz
-  sensor_msgs
-  std_msgs
-  tf2_ros
-  urdf
-  visualization_msgs
-  xacro
-  smm_screws
-)
+# --------------------------
+# Dependencies (ament)
+# --------------------------
+find_package(ament_cmake REQUIRED)
+find_package(ament_index_cpp REQUIRED)
 
-## System dependencies are found with CMake's conventions
-# find_package(Boost REQUIRED COMPONENTS system)
+# Core ROS2 + msgs
+find_package(rclcpp REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(visualization_msgs REQUIRED)
+
+# TF / URDF / KDL
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
+find_package(urdf REQUIRED)
 find_package(kdl_parser REQUIRED)
 find_package(orocos_kdl REQUIRED)
+
+# YAML + your screws library
 find_package(yaml-cpp REQUIRED)
+find_package(smm_screws REQUIRED)
 
-## Uncomment this if the package has a setup.py. This macro ensures
-## modules and global scripts declared therein get installed
-## See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
-# catkin_python_setup()
-
-################################################
-## Declare ROS messages, services and actions ##
-################################################
-
-## To declare and build messages, services or actions from within this
-## package, follow these steps:
-## * Let MSG_DEP_SET be the set of packages whose message types you use in
-##   your messages/services/actions (e.g. std_msgs, actionlib_msgs, ...).
-## * In the file package.xml:
-##   * add a build_depend tag for "message_generation"
-##   * add a build_depend and a exec_depend tag for each package in MSG_DEP_SET
-##   * If MSG_DEP_SET isn't empty the following dependency has been pulled in
-##     but can be declared for certainty nonetheless:
-##     * add a exec_depend tag for "message_runtime"
-## * In this file (CMakeLists.txt):
-##   * add "message_generation" and every package in MSG_DEP_SET to
-##     find_package(catkin REQUIRED COMPONENTS ...)
-##   * add "message_runtime" and every package in MSG_DEP_SET to
-##     catkin_package(CATKIN_DEPENDS ...)
-##   * uncomment the add_*_files sections below as needed
-##     and list every .msg/.srv/.action file to be processed
-##   * uncomment the generate_messages entry below
-##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
-
-## Generate messages in the 'msg' folder
-# add_message_files(
-#   FILES
-#   Message1.msg
-#   Message2.msg
-# )
-
-## Generate services in the 'srv' folder
-# add_service_files(
-#   FILES
-#   Service1.srv
-#   Service2.srv
-# )
-
-## Generate actions in the 'action' folder
-# add_action_files(
-#   FILES
-#   Action1.action
-#   Action2.action
-# )
-
-## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   sensor_msgs#   std_msgs#   visualization_msgs
-# )
-
-################################################
-## Declare ROS dynamic reconfigure parameters ##
-################################################
-
-## To declare and build dynamic reconfigure parameters within this
-## package, follow these steps:
-## * In the file package.xml:
-##   * add a build_depend and a exec_depend tag for "dynamic_reconfigure"
-## * In this file (CMakeLists.txt):
-##   * add "dynamic_reconfigure" to
-##     find_package(catkin REQUIRED COMPONENTS ...)
-##   * uncomment the "generate_dynamic_reconfigure_options" section below
-##     and list every .cfg file to be processed
-
-## Generate dynamic reconfigure parameters in the 'cfg' folder
-# generate_dynamic_reconfigure_options(
-#   cfg/DynReconf1.cfg
-#   cfg/DynReconf2.cfg
-# )
-
-###################################
-## catkin specific configuration ##
-###################################
-## The catkin_package macro generates cmake config files for your package
-## Declare things to be passed to dependent projects
-## INCLUDE_DIRS: uncomment this if your package contains header files
-## LIBRARIES: libraries you create in this project that dependent projects also need
-## CATKIN_DEPENDS: catkin_packages dependent projects also need
-## DEPENDS: system dependencies of this project that dependent projects also need
-catkin_package(
-  INCLUDE_DIRS include
-  LIBRARIES smm_synthesis smm_screws
-  CATKIN_DEPENDS joint_state_publisher robot_state_publisher roscpp rviz sensor_msgs std_msgs tf2_ros urdf visualization_msgs xacro 
-#  DEPENDS system_lib
-)
-
-###########
-## Build ##
-###########
-
-## Specify additional locations of header files
-## Your package locations should be listed before other locations
+# --------------------------
+# Include directories
+# --------------------------
 include_directories(
   include
-  ${catkin_INCLUDE_DIRS}
-  ${YAML_CPP_INCLUDE_DIRS} 
+  ${YAML_CPP_INCLUDE_DIRS}
   ${orocos_kdl_INCLUDE_DIRS}
   ${smm_screws_INCLUDE_DIRS}
 )
 
-## Declare a C++ library
-# add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/smm_synthesis.cpp
-# )
+# --------------------------
+# Executables
+# --------------------------
 
-## Add cmake target dependencies of the library
-## as an example, code may need to be generated before libraries
-## either from message generation or dynamic reconfigure
-# add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-
-## Declare a C++ executable
-## With catkin_make all packages are built within a single CMake context
-## The recommended prefix ensures that target names across packages don't collide
-# add_executable(${PROJECT_NAME}_node src/smm_synthesis_node.cpp)
+# 1) frame_extractor_kdl
 add_executable(frame_extractor_kdl src/frame_extractor_kdl.cpp)
+target_link_libraries(frame_extractor_kdl
+  PUBLIC
+    rclcpp::rclcpp
+    ament_index_cpp::ament_index_cpp
+    kdl_parser::kdl_parser
+    urdf::urdf
+    ament_index_cpp::ament_index_cpp
+    yaml-cpp
+    ${orocos_kdl_LIBRARIES}     # or orocos_kdl::orocos_kdl if your install exports it
+)
+install(TARGETS frame_extractor_kdl
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+# 2) com_extractor_kdl
 add_executable(com_extractor_kdl src/com_extractor_kdl.cpp)
+
+target_link_libraries(com_extractor_kdl
+  PUBLIC
+    rclcpp::rclcpp
+    ament_index_cpp::ament_index_cpp
+    tf2::tf2
+    tf2_ros::tf2_ros
+    tf2_geometry_msgs::tf2_geometry_msgs
+    kdl_parser::kdl_parser
+    urdf::urdf
+    yaml-cpp
+)
+
+install(TARGETS com_extractor_kdl
+  DESTINATION lib/${PROJECT_NAME})
+
+
+# 3) inertia_extractor_kdl
 add_executable(inertia_extractor_kdl src/inertia_extractor_kdl.cpp)
+
+target_link_libraries(inertia_extractor_kdl
+  PUBLIC
+    rclcpp::rclcpp
+    ament_index_cpp::ament_index_cpp
+    kdl_parser::kdl_parser
+    urdf::urdf
+    ament_index_cpp::ament_index_cpp
+    yaml-cpp
+    ${orocos_kdl_LIBRARIES}
+)
+
+install(TARGETS inertia_extractor_kdl
+  DESTINATION lib/${PROJECT_NAME})
+
+# 4) tcp_extractor_kdl
 add_executable(tcp_extractor_kdl src/tcp_extractor_kdl.cpp)
+target_link_libraries(tcp_extractor_kdl
+  PUBLIC
+    rclcpp::rclcpp
+    ament_index_cpp::ament_index_cpp
+    tf2::tf2
+    tf2_ros::tf2_ros
+    tf2_geometry_msgs::tf2_geometry_msgs
+    kdl_parser::kdl_parser
+    urdf::urdf
+    yaml-cpp
+)
+
+# 5) twist_extractor_screws (uses smm_screws)
 add_executable(twist_extractor_screws src/twist_extractor_screws.cpp)
+
+target_link_libraries(twist_extractor_screws
+  PUBLIC
+    rclcpp::rclcpp
+    ament_index_cpp::ament_index_cpp
+    yaml-cpp
+    ${smm_screws_LIBRARIES}
+)
+
+install(TARGETS twist_extractor_screws
+  DESTINATION lib/${PROJECT_NAME})
+
+
+# 6) passive_frame_extractor_kdl
 add_executable(passive_frame_extractor_kdl src/passive_frame_extractor_kdl.cpp)
+
+target_link_libraries(passive_frame_extractor_kdl
+  PUBLIC
+    rclcpp::rclcpp
+    ament_index_cpp::ament_index_cpp
+    kdl_parser::kdl_parser
+    urdf::urdf
+    yaml-cpp
+    ${orocos_kdl_LIBRARIES}   # or orocos_kdl::orocos_kdl if available
+)
+
+install(TARGETS passive_frame_extractor_kdl
+  DESTINATION lib/${PROJECT_NAME})
+
+# 7) passive_twist_extractor_screws (uses smm_screws)
 add_executable(passive_twist_extractor_screws src/passive_twist_extractor_screws.cpp)
-add_executable(pseudo_angle_extractor src/pseudo_angle_extractor.cpp)
-add_executable(structure_digit_setter src/structure_digit_setter.cpp)
 
-## Rename C++ executable without prefix
-## The above recommended prefix causes long target names, the following renames the
-## target back to the shorter version for ease of user use
-## e.g. "rosrun someones_pkg node" instead of "rosrun someones_pkg someones_pkg_node"
-# set_target_properties(${PROJECT_NAME}_node PROPERTIES OUTPUT_NAME node PREFIX "")
+target_link_libraries(passive_twist_extractor_screws
+  PUBLIC
+    rclcpp::rclcpp
+    ament_index_cpp::ament_index_cpp
+    yaml-cpp
+    ${smm_screws_LIBRARIES} 
+)
 
-## Add cmake target dependencies of the executable
-## same as for the library above
-# add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# 8) pseudo_angle_extractor
+add_executable(pseudo_angle_extractor
+  src/pseudo_angle_extractor.cpp
+)
 
-## Specify libraries to link a library or executable target against
-# target_link_libraries(${PROJECT_NAME}_node
-#   ${catkin_LIBRARIES}
-# )
-target_link_libraries(frame_extractor_kdl ${catkin_LIBRARIES} yaml-cpp ${orocos_kdl_LIBRARIES})
-target_link_libraries(com_extractor_kdl ${catkin_LIBRARIES} yaml-cpp ${orocos_kdl_LIBRARIES})
-target_link_libraries(inertia_extractor_kdl ${catkin_LIBRARIES} yaml-cpp ${orocos_kdl_LIBRARIES})
-target_link_libraries(tcp_extractor_kdl ${catkin_LIBRARIES} yaml-cpp ${orocos_kdl_LIBRARIES})
-target_link_libraries(twist_extractor_screws ${catkin_LIBRARIES} smm_screws yaml-cpp)
-target_link_libraries(passive_frame_extractor_kdl ${catkin_LIBRARIES} yaml-cpp ${orocos_kdl_LIBRARIES})
-target_link_libraries(passive_twist_extractor_screws ${catkin_LIBRARIES} smm_screws yaml-cpp)
-target_link_libraries(pseudo_angle_extractor ${catkin_LIBRARIES} yaml-cpp)
-target_link_libraries(structure_digit_setter ${catkin_LIBRARIES} yaml-cpp)
+target_link_libraries(pseudo_angle_extractor
+  PUBLIC
+    rclcpp::rclcpp
+    ament_index_cpp::ament_index_cpp
+    yaml-cpp
+)
 
-# [15-4-25] How to link libraries if needed 
-#target_link_libraries(structure_optimizer
-#  ${catkin_LIBRARIES}
-#  yaml-cpp
-#  ${orocos_kdl_LIBRARIES}
-#)
-#############
-## Install ##
-#############
+install(TARGETS pseudo_angle_extractor
+  DESTINATION lib/${PROJECT_NAME}
+)
 
-# all install targets should use catkin DESTINATION variables
-# See http://ros.org/doc/api/catkin/html/adv_user_guide/variables.html
+# 9) structure_digit_setter
+add_executable(structure_digit_setter
+  src/structure_digit_setter.cpp
+)
 
-## Mark executable scripts (Python etc.) for installation
-## in contrast to setup.py, you can choose the destination
-# catkin_install_python(PROGRAMS
-#   scripts/my_python_script
-#   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-# )
+target_link_libraries(structure_digit_setter
+  PUBLIC
+    rclcpp::rclcpp
+    ament_index_cpp::ament_index_cpp
+    yaml-cpp
+)
 
-## Mark executables for installation
-## See http://docs.ros.org/melodic/api/catkin/html/howto/format1/building_executables.html
-# install(TARGETS ${PROJECT_NAME}_node
-#   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-# )
+install(TARGETS structure_digit_setter
+  DESTINATION lib/${PROJECT_NAME}
+)
 
-## Mark libraries for installation
-## See http://docs.ros.org/melodic/api/catkin/html/howto/format1/building_libraries.html
-# install(TARGETS ${PROJECT_NAME}
-#   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-#   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-#   RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION}
-# )
 
-## Mark cpp header files for installation
-# install(DIRECTORY include/${PROJECT_NAME}/
-#   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-#   FILES_MATCHING PATTERN "*.h"
-#   PATTERN ".svn" EXCLUDE
-# )
+# --------------------------
+# Install targets & resources
+# --------------------------
+install(TARGETS
+  frame_extractor_kdl
+  com_extractor_kdl
+  inertia_extractor_kdl
+  tcp_extractor_kdl
+  twist_extractor_screws
+  passive_frame_extractor_kdl
+  passive_twist_extractor_screws
+  pseudo_angle_extractor
+  structure_digit_setter
+  DESTINATION lib/${PROJECT_NAME}
+)
 
-## Mark other files for installation (e.g. launch and bag files, etc.)
-# install(FILES
-#   # myfile1
-#   # myfile2
-#   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
-# )
+# Install launch / urdf / config / meshes if you have them
+install(DIRECTORY
+  launch
+  urdf
+  config
+  meshes
+  DESTINATION share/${PROJECT_NAME}
+)
 
-#############
-## Testing ##
-#############
-
-## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_smm_synthesis.cpp)
-# if(TARGET ${PROJECT_NAME}-test)
-#   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
-# endif()
-
-## Add folders to be run by python nosetests
-# catkin_add_nosetests(test)
+# --------------------------
+# ament package
+# --------------------------
+ament_package()

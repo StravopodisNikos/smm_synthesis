@@ -1,142 +1,168 @@
-#include <ros/ros.h>
-#include <ros/package.h>
+#include <chrono>
+#include <fstream>
+#include <map>
+#include <string>
+
+#include <rclcpp/rclcpp.hpp>
+#include <ament_index_cpp/get_package_share_directory.hpp>
+
 #include <urdf/model.h>
 #include <kdl_parser/kdl_parser.hpp>
 #include <kdl/tree.hpp>
 #include <kdl/chain.hpp>
 #include <kdl/frames.hpp>
+
 #include <Eigen/Dense>
 #include <yaml-cpp/yaml.h>
-#include <fstream>
-#include <string>
-#include <vector>
-#include <map>
 
 Eigen::Matrix4d KDLFrameToEigen(const KDL::Frame& frame)
 {
     Eigen::Matrix4d mat = Eigen::Matrix4d::Identity();
-
-    // Rotation part
     for (int i = 0; i < 3; ++i)
-    {
         for (int j = 0; j < 3; ++j)
-        {
-            mat(i,j) = frame.M(i,j);
-        }
-    }
-
-    // Translation part
-    mat(0,3) = frame.p.x();
-    mat(1,3) = frame.p.y();
-    mat(2,3) = frame.p.z();
-
+            mat(i, j) = frame.M(i, j);
+    mat(0, 3) = frame.p.x();
+    mat(1, 3) = frame.p.y();
+    mat(2, 3) = frame.p.z();
     return mat;
 }
 
 int main(int argc, char** argv)
 {
-    ros::init(argc, argv, "frame_extractor_kdl");
-    ros::NodeHandle nh("~");  // Private NodeHandle for private parameters
+    rclcpp::init(argc, argv);
+    auto node = rclcpp::Node::make_shared("frame_extractor_kdl");
 
-    // 1. Get output YAML file name from parameter
-    std::string output_filename;
-    if (!nh.getParam("output_file", output_filename))
-    {
-        ROS_ERROR("No output_file parameter given. Please specify where to save the YAML!");
-        return -1;
+    // --- Parameters ---
+    node->declare_parameter<std::string>("output_file", "");
+    std::string output_filename =
+        node->get_parameter("output_file").as_string();
+
+    if (output_filename.empty()) {
+        RCLCPP_ERROR(node->get_logger(),
+                     "No 'output_file' parameter given. Please specify where to save the YAML!");
+        rclcpp::shutdown();
+        return 1;
     }
 
-    // 2. Optional: wait a bit for robot_state_publisher to fully load
-    ros::Duration(2.0).sleep();
-    ROS_INFO("Starting frame extraction...");
+    node->declare_parameter<std::string>("robot_description", "");
+    std::string robot_description =
+        node->get_parameter("robot_description").as_string();
 
-    // 3. Load URDF from parameter server
+    if (robot_description.empty()) {
+        RCLCPP_ERROR(node->get_logger(),
+                     "Parameter 'robot_description' is empty. "
+                     "Make sure it is set for this node (e.g. via a launch file).");
+        rclcpp::shutdown();
+        return 1;
+    }
+
+    rclcpp::sleep_for(std::chrono::seconds(2));
+    RCLCPP_INFO(node->get_logger(), "Starting frame extraction...");
+
+    // --- Build URDF model from parameter ---
     urdf::Model model;
-    if (!model.initParam("robot_description"))
-    {
-        ROS_ERROR("Failed to parse URDF from parameter server");
-        return -1;
+    if (!model.initString(robot_description)) {
+        RCLCPP_ERROR(node->get_logger(),
+                     "Failed to parse URDF from 'robot_description' parameter.");
+        rclcpp::shutdown();
+        return 1;
     }
 
-    // 4. Create KDL tree
+    // --- Build KDL tree ---
     KDL::Tree kdl_tree;
-    if (!kdl_parser::treeFromUrdfModel(model, kdl_tree))
-    {
-        ROS_ERROR("Failed to construct KDL tree");
-        return -1;
+    if (!kdl_parser::treeFromUrdfModel(model, kdl_tree)) {
+        RCLCPP_ERROR(node->get_logger(), "Failed to construct KDL tree.");
+        rclcpp::shutdown();
+        return 1;
     }
-    ROS_INFO("Successfully loaded KDL Tree!");
 
-    // 5. Extract root name (could be "world" or "base_link")
-    std::string root_name = kdl_tree.getRootSegment()->first;
-    ROS_INFO_STREAM("Root link detected: " << root_name);
+    std::string root_name = "base_link";
+    RCLCPP_INFO(node->get_logger(),
+                "Setting root frame to: '%s' with rotz(-pi) compensation",
+                root_name.c_str());
 
-    // 6. Find active joints only and compute their world frames
-    std::map<std::string, Eigen::Matrix4d> frame_map;
+    // Map of URDF link → internal name
+    std::map<std::string, std::string> frame_name_map = {
+        {"base_link",         "gsa00"},
+        {"active_module_b_1", "gsa10"},
+        {"active_module_b_2", "gsa20"}
+    };
 
-    for (const auto& segment : kdl_tree.getSegments())
+    std::map<std::string, Eigen::Matrix4d> extracted_frames;
+
+    // Define rotz(-pi) = diag(-1, -1, 1, 1)
+    Eigen::Matrix4d Rz_pi = Eigen::Matrix4d::Identity();
+    Rz_pi(0, 0) = -1.0;
+    Rz_pi(1, 1) = -1.0;
+
+    // --- Extract transforms for each frame ---
+    for (const auto& pair : frame_name_map)
     {
-        const auto& seg = segment.second.segment;
-        if (seg.getJoint().getType() != KDL::Joint::None)  // Only active joints
-        {
-            std::string joint_name = seg.getName();
+        const std::string& urdf_frame    = pair.first;
+        const std::string& internal_name = pair.second;
 
-            // Create a KDL chain from root to this joint
-            KDL::Chain chain;
-            if (!kdl_tree.getChain(root_name, joint_name, chain))
-            {
-                ROS_ERROR_STREAM("Failed to extract chain from " << root_name << " to " << joint_name);
-                continue;
-            }
-
-            // Compute forward kinematics along the chain
-            KDL::Frame frame = KDL::Frame::Identity();
-            for (unsigned int i = 0; i < chain.getNrOfSegments(); ++i)
-            {
-                const KDL::Segment& chain_seg = chain.getSegment(i);
-                frame = frame * chain_seg.pose(0.0);  // 0 angle at home configuration
-            }
-
-            Eigen::Matrix4d mat = KDLFrameToEigen(frame);
-            frame_map[joint_name] = mat;
+        KDL::Chain chain;
+        if (!kdl_tree.getChain(root_name, urdf_frame, chain)) {
+            RCLCPP_ERROR(node->get_logger(),
+                         "Failed to extract chain from '%s' to '%s'",
+                         root_name.c_str(), urdf_frame.c_str());
+            continue;
         }
+
+        KDL::Frame frame = KDL::Frame::Identity();
+        for (unsigned int i = 0; i < chain.getNrOfSegments(); ++i) {
+            const KDL::Segment& segment = chain.getSegment(i);
+            frame = frame * segment.pose(0.0);
+        }
+
+        Eigen::Matrix4d tf = KDLFrameToEigen(frame);
+        Eigen::Matrix4d transformed = Rz_pi * tf;
+
+        extracted_frames[internal_name] = transformed;
+
+        RCLCPP_INFO(node->get_logger(),
+                    "Mapped URDF frame '%s' → '%s' with rotz(-pi)",
+                    urdf_frame.c_str(), internal_name.c_str());
     }
 
-    ROS_INFO("Found %lu active joints.", frame_map.size());
-
-    // 7. Print matrices
-    for (const auto& entry : frame_map)
-    {
-        std::cout << "\nFrame: " << entry.first << "\n";
-        std::cout << entry.second << "\n";
+    // --- Resolve package share directory in ROS 2 ---
+    std::string pkg_share;
+    try {
+        pkg_share = ament_index_cpp::get_package_share_directory("smm_synthesis");
+    } catch (const std::exception &e) {
+        RCLCPP_ERROR(node->get_logger(),
+                     "Failed to get share directory for package 'smm_synthesis': %s",
+                     e.what());
+        rclcpp::shutdown();
+        return 1;
     }
 
-    // 8. Build save path inside your package
-    std::string save_path = ros::package::getPath("smm_synthesis") + "/config/yaml/" + output_filename;
+    std::string save_path = pkg_share + "/config/yaml/" + output_filename;
 
-    // 9. Save matrices into YAML
     YAML::Emitter out;
     out << YAML::BeginMap;
-    for (const auto& entry : frame_map)
+    for (const auto& item : extracted_frames)
     {
-        out << YAML::Key << entry.first << YAML::Value << YAML::BeginSeq;
+        out << YAML::Key << item.first << YAML::Value << YAML::BeginSeq;
         for (int i = 0; i < 4; ++i)
-        {
             for (int j = 0; j < 4; ++j)
-            {
-                out << entry.second(i,j);
-            }
-        }
+                out << item.second(i, j);
         out << YAML::EndSeq;
     }
     out << YAML::EndMap;
 
     std::ofstream fout(save_path);
+    if (!fout) {
+        RCLCPP_ERROR(node->get_logger(),
+                     "Failed to open file for writing: %s", save_path.c_str());
+        rclcpp::shutdown();
+        return 1;
+    }
     fout << out.c_str();
     fout.close();
 
-    ROS_INFO_STREAM("Frames saved to: " << save_path);
+    RCLCPP_INFO(node->get_logger(), "Frames saved to: %s", save_path.c_str());
 
-    ros::spin();
+    rclcpp::shutdown();
     return 0;
 }

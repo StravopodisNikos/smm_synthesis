@@ -1,7 +1,7 @@
 <?xml version="1.0" ?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
 
-<!-- [16-2-24] Copied from catkin_ws/src/smm_ros_gazebo_pkg/urdf/building _blocks 
+<!-- [16-2-24] Copied from catkin_ws/src/smm_synthesis/urdf/building _blocks 
                - added collision properties for MoveIt integration -->
 
 <!-- ALL components used to assemble the Ovidius SMM are defined here. This file should be xacro:included in each xacro:assembly robot urdf file! -->
@@ -30,7 +30,7 @@
 		   <color rgba="0.5 0.5 0.5 1"/>
 		 </material>
 	    </visual>
-	    <!-- Added on [16-2-24]. Checked visually by executing: $ roslaunch smm_ros_gazebo_pkg smm_ros_gazebo.launch -->
+	    <!-- Added on [16-2-24]. Checked visually by executing: $ roslaunch smm_synthesis smm_ros_gazebo.launch -->
 	    <collision>
 		 <origin rpy="${origin_rpy}" xyz="${origin_xyz}"/>
       	           <geometry>
@@ -85,13 +85,13 @@
 	    <visual>
 		 <origin rpy="${origin_rpy}" xyz="${origin_xyz}"/>
 		 <geometry>
-		   <mesh filename="package://smm_ros_gazebo_pkg/meshes/ovidius_smm_baselink.stl" scale="0.001 0.001 0.001"/>
+		   <mesh filename="package://smm_synthesis/meshes/ovidius_smm_baselink.stl" scale="0.001 0.001 0.001"/>
 		 </geometry>
 		 <material name="gray">
 		   <color rgba="0.5 0.5 0.5 1"/>
 		 </material>
 	    </visual>
-	    <!-- Added on [16-2-24]. Checked visually by executing: $ roslaunch smm_ros_gazebo_pkg smm_ros_gazebo.launch -->
+	    <!-- Added on [16-2-24]. Checked visually by executing: $ roslaunch smm_synthesis smm_ros_gazebo.launch -->
 	    <collision>
 		 <origin rpy="${origin_rpy}" xyz="0 0 0.025"/>
 		 <geometry>
@@ -119,13 +119,13 @@
       <visual>
         <origin rpy="${origin_rpy}" xyz="${origin_xyz}" />
         <geometry>
-          <mesh filename="package://smm_ros_gazebo_pkg/meshes/pjoint1_static.stl" scale="0.001 0.001 0.001"/>
+          <mesh filename="package://smm_synthesis/meshes/pjoint1_static.stl" scale="0.001 0.001 0.001"/>
         </geometry>
               <material name="silver">
         <color rgba="0.753 0.753 0.753 1"/>
       </material>
       </visual>
-    <!-- Added on [16-2-24]. Checked visually by executing: $ roslaunch smm_ros_gazebo_pkg smm_ros_gazebo.launch -->
+    <!-- Added on [16-2-24]. Checked visually by executing: $ roslaunch smm_synthesis smm_ros_gazebo.launch -->
     <collision>
 	 <origin rpy="0 0 0" xyz="0 0 0.08"/>
 	 <geometry>
@@ -147,13 +147,13 @@
       <visual>
         <origin rpy="${origin_rpy}" xyz="${origin_xyz}" />
         <geometry>
-          <mesh filename="package://smm_ros_gazebo_pkg/meshes/pjoint1_moveable.stl" scale="0.001 0.001 0.001"/>
+          <mesh filename="package://smm_synthesis/meshes/pjoint1_moveable.stl" scale="0.001 0.001 0.001"/>
         </geometry>
         <material name="silver">
           <color rgba="0.75 0.75 0.75 1"/>
         </material>
       </visual>
-    <!-- Added on [16-2-24]. Checked visually by executing: $ roslaunch smm_ros_gazebo_pkg smm_ros_gazebo.launch -->
+    <!-- Added on [16-2-24]. Checked visually by executing: $ roslaunch smm_synthesis smm_ros_gazebo.launch -->
     <collision>
 	 <origin rpy="1.5708 0 0" xyz="0 0.095 0"/>
 	 <geometry>
@@ -201,13 +201,13 @@
       <visual>
         <origin rpy="${origin_rpy}" xyz="${origin_xyz}" />
         <geometry>
-          <mesh filename="package://smm_ros_gazebo_pkg/meshes/active_module_fixed.stl" scale="0.001 0.001 0.001"/>
+          <mesh filename="package://smm_synthesis/meshes/active_module_fixed.stl" scale="0.001 0.001 0.001"/>
         </geometry>
               <material name="lightblack">
         <color rgba="0.25 0.25 0.25 1"/>
       </material>
       </visual>
-    <!-- Added on [16-2-24]. Checked visually by executing: $ roslaunch smm_ros_gazebo_pkg smm_ros_gazebo.launch -->
+    <!-- Added on [16-2-24]. Checked visually by executing: $ roslaunch smm_synthesis smm_ros_gazebo.launch -->
     <collision>
 	 <origin rpy="0 1.5708 1.5708" xyz="0 0.030 -0.015"/>
 	 <geometry>
@@ -228,13 +228,13 @@
       <visual>
         <origin rpy="${origin_rpy}" xyz="${origin_xyz}" />
         <geometry>
-          <mesh filename="package://smm_ros_gazebo_pkg/meshes/active_module_moving.stl" scale="0.001 0.001 0.001"/>
+          <mesh filename="package://smm_synthesis/meshes/active_module_moving.stl" scale="0.001 0.001 0.001"/>
         </geometry>
         <material name="black">
           <color rgba="0.1 0.1 0.1 1"/>
         </material>
       </visual>
-    <!-- Added on [16-2-24]. Checked visually by executing: $ roslaunch smm_ros_gazebo_pkg smm_ros_gazebo.launch -->
+    <!-- Added on [16-2-24]. Checked visually by executing: $ roslaunch smm_synthesis smm_ros_gazebo.launch -->
     <collision>
 	 <origin rpy="1.5708 0 0" xyz="0.0155 0.045 0"/>
 	 <geometry>
@@ -267,14 +267,14 @@
 	    <visual>
 	      <origin rpy="0 0 0" xyz="0 0 0"/>
 	      <geometry>
-	        <mesh filename="package://smm_ros_gazebo_pkg/meshes/force_sensor_stl.stl" scale="0.001 0.001 0.001"/>
+	        <mesh filename="package://smm_synthesis/meshes/force_sensor_stl.stl" scale="0.001 0.001 0.001"/>
 	      </geometry>
 	      <material name="edward">
 	        <!-- Color Pick: http://www.flatuicolorpicker.com/grey-rgba-color-model/ -->
 	        <color rgba="0.6705 0.7098 0.7098 1"/>
 	      </material>
 	    </visual>
-	<!-- Added on [16-2-24]. Checked visually by executing: $ roslaunch smm_ros_gazebo_pkg smm_ros_gazebo.launch -->
+	<!-- Added on [16-2-24]. Checked visually by executing: $ roslaunch smm_synthesis smm_ros_gazebo.launch -->
     	<collision>
     		<origin rpy="0 0 0" xyz="0 0 0.015" />
       		<geometry>
@@ -301,7 +301,7 @@
         <mass value ="0.1" />
         <inertia ixx="1.6e-05" ixy="0" ixz="0" iyy="1.6e-05" iyz="0" izz="6e-06"/>
     </inertial>
-        <!-- Added on [16-2-24]. Checked visually by executing: $ roslaunch smm_ros_gazebo_pkg smm_ros_gazebo.launch -->
+        <!-- Added on [16-2-24]. Checked visually by executing: $ roslaunch smm_synthesis smm_ros_gazebo.launch -->
     <collision>
     		<origin rpy="0 0 0" xyz="0 0 0" />
       	<geometry>
@@ -329,7 +329,7 @@
         <mass value ="0.1" />
         <inertia ixx="2.5e-05" ixy="0" ixz="0" iyy="2.5e-05" iyz="0" izz="2.5e-05"/>
     </inertial> 
-        <!-- Added on [16-2-24]. Checked visually by executing: $ roslaunch smm_ros_gazebo_pkg smm_ros_gazebo.launch -->
+        <!-- Added on [16-2-24]. Checked visually by executing: $ roslaunch smm_synthesis smm_ros_gazebo.launch -->
     <collision>
     		<origin rpy="0 0 0" xyz="0 0 0" />
       	<geometry>
@@ -350,14 +350,14 @@
 	    <visual>
 	      <origin rpy="0 0 0" xyz="0 0 0.020"/>
 	      <geometry>
-	        <mesh filename="package://smm_ros_gazebo_pkg/meshes/massage_tool.stl" scale="0.001 0.001 0.001"/>
+	        <mesh filename="package://smm_synthesis/meshes/massage_tool.stl" scale="0.001 0.001 0.001"/>
 	      </geometry>
 	      <material name="Porcelain">
 	        <!-- Color Pick: http://www.flatuicolorpicker.com/grey-rgba-color-model/ -->
 	        <color rgba="0.9254 0.9412 0.9413 1"/>
 	      </material>
 	    </visual>
-	<!-- Added on [16-2-24]. Checked visually by executing: $ roslaunch smm_ros_gazebo_pkg smm_ros_gazebo.launch -->
+	<!-- Added on [16-2-24]. Checked visually by executing: $ roslaunch smm_synthesis smm_ros_gazebo.launch -->
     	<collision>
     		<origin rpy="0 0 0" xyz="0 0 0.040" />
       		<geometry>
