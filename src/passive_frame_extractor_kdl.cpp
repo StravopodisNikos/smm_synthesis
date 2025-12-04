@@ -20,11 +20,11 @@
 
 // How to run standalone:
 /*
- * ros2 run smm_synthesis passive_frame_extractor_kdl \
+ros2 run smm_synthesis passive_frame_extractor_kdl \
   --ros-args \
-  -p output_file:=gspj0.yaml \
-  -p s2:=0 -p s3:=9 -p s5:=0 -p s6:=9 \
-  -p robot_description:="$(xacro /path/to/ .xacro [file])"
+  -p output_file:=/home/nikos/ros2_ws/src/smm_data/synthesis/yaml/gspj0.yaml \
+  -p robot_description:="$(xacro /home/nikos/ros2_ws/install/smm_synthesis/share/smm_synthesis/urdf/smm_structure_anatomy_assembly.xacro)"
+
 */
 
 Eigen::Matrix4d KDLFrameToEigen(const KDL::Frame & frame)
@@ -57,13 +57,36 @@ int main(int argc, char ** argv)
     return 1;
   }
 
-  // structure digits (default = 9 → "no pseudo")
-  int s2 = node->declare_parameter<int>("s2", 9);
-  int s3 = node->declare_parameter<int>("s3", 9);
-  int s5 = node->declare_parameter<int>("s5", 9);
-  int s6 = node->declare_parameter<int>("s6", 9);
+  // --- Read structure digits from assembly.yaml (like ROS1 + rosparam) ---
+  std::string share_dir;
+  try {
+    share_dir = ament_index_cpp::get_package_share_directory("smm_synthesis");
+  } catch (const std::exception & e) {
+    RCLCPP_ERROR(
+      node->get_logger(),
+      "Failed to get package share directory for 'smm_synthesis': %s", e.what());
+    rclcpp::shutdown();
+    return 1;
+  }
 
-  // optional warning if all are 9
+  const std::string structure_file = share_dir + "/config/yaml/assembly.yaml";
+  YAML::Node assembly;
+  try {
+    assembly = YAML::LoadFile(structure_file);
+  } catch (const std::exception & e) {
+    RCLCPP_ERROR(
+      node->get_logger(),
+      "Failed to load assembly YAML '%s': %s",
+      structure_file.c_str(), e.what());
+    rclcpp::shutdown();
+    return 1;
+  }
+
+  int s2 = assembly["s2"].as<int>();
+  int s3 = assembly["s3"].as<int>();
+  int s5 = assembly["s5"].as<int>();
+  int s6 = assembly["s6"].as<int>();
+
   if (s2 == 9 && s3 == 9 && s5 == 9 && s6 == 9) {
     RCLCPP_WARN(
       node->get_logger(),
@@ -71,7 +94,9 @@ int main(int argc, char ** argv)
   }
 
   // URDF string from parameter 'robot_description'
-  std::string urdf_xml = node->declare_parameter<std::string>("robot_description", "");
+  node->declare_parameter<std::string>("robot_description", "");
+  std::string urdf_xml;
+  node->get_parameter("robot_description", urdf_xml);
   if (urdf_xml.empty()) {
     RCLCPP_ERROR(
       node->get_logger(),
@@ -145,20 +170,6 @@ int main(int argc, char ** argv)
     }
   }
 
-  // Resolve package share path
-  std::string share_dir;
-  try {
-    share_dir = ament_index_cpp::get_package_share_directory("smm_synthesis");
-  } catch (const std::exception & e) {
-    RCLCPP_ERROR(
-      node->get_logger(),
-      "Failed to get share directory for 'smm_synthesis': %s", e.what());
-    rclcpp::shutdown();
-    return 1;
-  }
-
-  std::string path = share_dir + "/config/yaml/" + output_filename;
-
   // Write YAML
   YAML::Emitter out;
   out << YAML::BeginMap;
@@ -173,18 +184,21 @@ int main(int argc, char ** argv)
   }
   out << YAML::EndMap;
 
-  std::ofstream fout(path);
+  std::ofstream fout(output_filename);
   if (!fout.is_open()) {
     RCLCPP_ERROR(
       node->get_logger(),
-      "Failed to open output file '%s' for writing.", path.c_str());
+      "Failed to open output file '%s' for writing.", output_filename.c_str());
     rclcpp::shutdown();
     return 1;
   }
   fout << out.c_str();
   fout.close();
 
-  RCLCPP_INFO(node->get_logger(), "Saved selected passive frame transforms to: %s", path.c_str());
+  RCLCPP_INFO(
+    node->get_logger(),
+    "Saved selected passive frame transforms to: %s",
+    output_filename.c_str());
 
   rclcpp::shutdown();
   return 0;

@@ -6,14 +6,13 @@
 #include <Eigen/Dense>
 #include <yaml-cpp/yaml.h>
 
-#include <urdf/model.h>
+#include <urdf/model.hpp>
 #include <kdl_parser/kdl_parser.hpp>
 #include <kdl/tree.hpp>
 #include <kdl/chain.hpp>
 #include <kdl/frames.hpp>
 
 #include "rclcpp/rclcpp.hpp"
-#include "ament_index_cpp/get_package_share_directory.hpp"
 
 // FOR TEST RUN (ROS 2):
 //   ros2 run smm_synthesis inertia_extractor_kdl --ros-args -p output_file:=Mscomi0.yaml
@@ -205,19 +204,7 @@ int main(int argc, char ** argv)
     }
   }
 
-  // Build output path using ament_index instead of ros::package
-  std::string share_dir;
-  try {
-    share_dir = ament_index_cpp::get_package_share_directory("smm_synthesis");
-  } catch (const std::exception & e) {
-    RCLCPP_ERROR(node->get_logger(),
-      "Could not get package share directory for 'smm_synthesis': %s", e.what());
-    return 1;
-  }
-
-  std::string save_path = share_dir + "/config/yaml/" + output_filename;
-
-  // Emit YAML
+  // --- Emit YAML directly to the given output filename (full path) ---
   YAML::Emitter out;
   out << YAML::BeginMap;
 
@@ -234,15 +221,17 @@ int main(int argc, char ** argv)
 
   out << YAML::EndMap;
 
-  std::ofstream fout(save_path);
+  std::ofstream fout(output_filename);
   if (!fout.is_open()) {
-    RCLCPP_ERROR(node->get_logger(), "Failed to open output file: %s", save_path.c_str());
+    RCLCPP_ERROR(node->get_logger(),
+      "Failed to open output file: %s", output_filename.c_str());
     return 1;
   }
   fout << out.c_str();
   fout.close();
 
-  RCLCPP_INFO(node->get_logger(), "Spatial inertias saved to: %s", save_path.c_str());
+  RCLCPP_INFO(node->get_logger(),
+    "Spatial inertias saved to: %s", output_filename.c_str());
 
   rclcpp::shutdown();
   return 0;

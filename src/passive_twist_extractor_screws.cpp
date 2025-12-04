@@ -4,19 +4,26 @@
 #include <map>
 #include <fstream>
 #include <iostream>
+#include <chrono>
 
 #include <Eigen/Dense>
 #include <yaml-cpp/yaml.h>
 
 #include "rclcpp/rclcpp.hpp"
 #include "ament_index_cpp/get_package_share_directory.hpp"
+#include "smm_screws/core/ScrewsKinematics.h"  // Screws library
 
-#include "smm_screws/core/ScrewsKinematics.h"  // updated include path
-
+//ros2 run smm_synthesis passive_twist_extractor_screws \
+  --ros-args \
+  -p input_file:=/home/nikos/ros2_ws/src/smm_data/synthesis/yaml/gspj0.yaml \
+  -p output_file:=/home/nikos/ros2_ws/src/smm_data/synthesis/yaml/xi_pj_anat.yaml
+  
 int main(int argc, char ** argv)
 {
   rclcpp::init(argc, argv);
   auto node = rclcpp::Node::make_shared("passive_twist_extractor_screws");
+
+  using namespace std::chrono_literals;
 
   // ---- Get input YAML file name as parameter ----
   node->declare_parameter<std::string>("input_file", "");
@@ -25,6 +32,17 @@ int main(int argc, char ** argv)
     RCLCPP_ERROR(
       node->get_logger(),
       "No 'input_file' parameter provided. Use --ros-args -p input_file:=gspj0.yaml");
+    rclcpp::shutdown();
+    return 1;
+  }
+
+  // ---- Get output YAML file name as parameter ----
+  node->declare_parameter<std::string>("output_file", "");
+  std::string output_file = node->get_parameter("output_file").as_string();
+  if (output_file.empty()) {
+    RCLCPP_ERROR(
+      node->get_logger(),
+      "No 'output_file' parameter provided. Use --ros-args -p output_file:=/full/path/xi_pj_anat.yaml");
     rclcpp::shutdown();
     return 1;
   }
@@ -77,8 +95,16 @@ int main(int argc, char ** argv)
     return 1;
   }
 
+  // Give passive_frame_extractor_kdl a bit of time to write gspj0.yaml
+  rclcpp::sleep_for(1s);
+
   // ---- Load input transforms (gspj0.yaml) ----
-  const std::string input_path = share_dir + "/config/yaml/" + input_file;
+  // If input_file is not absolute, interpret it relative to smm_synthesis/config/yaml
+  std::string input_path = input_file;
+  if (!input_file.empty() && input_file[0] != '/') {
+    input_path = share_dir + "/config/yaml/" + input_file;
+  }
+
   YAML::Node frame_data;
   try {
     frame_data = YAML::LoadFile(input_path);
@@ -90,6 +116,10 @@ int main(int argc, char ** argv)
     rclcpp::shutdown();
     return 1;
   }
+
+  RCLCPP_INFO(
+    node->get_logger(),
+    "Loaded passive frame YAML from: %s", input_path.c_str());
 
   ScrewsKinematics kin;
 
@@ -134,8 +164,13 @@ int main(int argc, char ** argv)
     std::cout << "Twist: " << twist.transpose() << "\n";
   }
 
-  // ---- Save to xi_pj_anat.yaml ----
-  const std::string output_path = share_dir + "/config/yaml/xi_pj_anat.yaml";
+  RCLCPP_INFO(
+    node->get_logger(),
+    "Active passive frames: %zu, computed passive twists: %zu",
+    active_frames.size(), twists.size());
+
+  // ---- Save to output_file (full path from param) ----
+  const std::string output_path = output_file;
 
   YAML::Emitter out;
   out << YAML::BeginMap;

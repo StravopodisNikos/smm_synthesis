@@ -6,14 +6,13 @@
 #include <Eigen/Dense>
 #include <yaml-cpp/yaml.h>
 
-#include <urdf/model.h>
+#include <urdf/model.hpp>
 #include <kdl_parser/kdl_parser.hpp>
 #include <kdl/tree.hpp>
 #include <kdl/chain.hpp>
 #include <kdl/frames.hpp>
 
 #include "rclcpp/rclcpp.hpp"
-#include "ament_index_cpp/get_package_share_directory.hpp"
 
 int main(int argc, char ** argv)
 {
@@ -34,6 +33,8 @@ int main(int argc, char ** argv)
     return 1;
   }
 
+  rclcpp::sleep_for(2s);
+  
   // --- Get URDF from 'robot_description' parameter ---
   node->declare_parameter<std::string>("robot_description", "");
   std::string robot_description;
@@ -102,19 +103,6 @@ int main(int argc, char ** argv)
   std::cout << "\nTransform from world to TCP (4x4 matrix):\n"
             << tf_matrix << "\n";
 
-  // --- Build save path using ament_index instead of ros::package ---
-  std::string share_dir;
-  try {
-    share_dir = ament_index_cpp::get_package_share_directory("smm_synthesis");
-  } catch (const std::exception & e) {
-    RCLCPP_ERROR(
-      node->get_logger(),
-      "Could not get package share directory for 'smm_synthesis': %s", e.what());
-    return 1;
-  }
-
-  std::string save_path = share_dir + "/config/yaml/" + output_filename;
-
   // --- Save to YAML ---
   YAML::Emitter out;
   out << YAML::BeginMap;
@@ -127,15 +115,19 @@ int main(int argc, char ** argv)
   out << YAML::EndSeq;
   out << YAML::EndMap;
 
-  std::ofstream fout(save_path);
+  std::ofstream fout(output_filename);
   if (!fout.is_open()) {
-    RCLCPP_ERROR(node->get_logger(), "Failed to open file for writing: %s", save_path.c_str());
+    RCLCPP_ERROR(
+      node->get_logger(),
+      "Failed to open file for writing: %s", output_filename.c_str());
     return 1;
   }
   fout << out.c_str();
   fout.close();
 
-  RCLCPP_INFO(node->get_logger(), "TCP frame saved to: %s", save_path.c_str());
+  RCLCPP_INFO(
+    node->get_logger(),
+    "TCP frame saved to: %s", output_filename.c_str());
 
   rclcpp::shutdown();
   return 0;

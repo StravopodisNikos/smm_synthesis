@@ -13,7 +13,18 @@ int main(int argc, char ** argv)
   rclcpp::init(argc, argv);
   auto node = rclcpp::Node::make_shared("pseudo_angle_extractor");
 
-  // Resolve package share directory
+  // --- 1. Get output_file as FULL PATH from ROS 2 parameter ---
+  node->declare_parameter<std::string>("output_file", "");
+  std::string output_path = node->get_parameter("output_file").as_string();
+  if (output_path.empty()) {
+    RCLCPP_ERROR(
+      node->get_logger(),
+      "No 'output_file' parameter provided. Use --ros-args -p output_file:=/full/path/q_pj_anat.yaml");
+    rclcpp::shutdown();
+    return 1;
+  }
+
+  // --- 2. Locate assembly.yaml inside the smm_synthesis package ---
   std::string share_dir;
   try {
     share_dir = ament_index_cpp::get_package_share_directory("smm_synthesis");
@@ -25,11 +36,9 @@ int main(int argc, char ** argv)
     return 1;
   }
 
-  // Define file paths
-  const std::string input_path  = share_dir + "/config/yaml/assembly.yaml";
-  const std::string output_path = share_dir + "/config/yaml/q_pj_anat.yaml";
+  const std::string input_path = share_dir + "/config/yaml/assembly.yaml";
 
-  // Load YAML file
+  // --- 3. Load assembly.yaml ---
   YAML::Node root;
   try {
     root = YAML::LoadFile(input_path);
@@ -73,7 +82,7 @@ int main(int argc, char ** argv)
   if (s5 != 9) filtered_angles.push_back(all_angles[2]);
   if (s6 != 9) filtered_angles.push_back(all_angles[3]);
 
-  // Emit YAML
+  // --- 4. Emit YAML into the requested output_file path ---
   YAML::Emitter out;
   out << YAML::BeginMap;
   out << YAML::Key << "pseudo_angles" << YAML::Value << YAML::BeginSeq;
@@ -83,7 +92,6 @@ int main(int argc, char ** argv)
   out << YAML::EndSeq;
   out << YAML::EndMap;
 
-  // Save output
   std::ofstream fout(output_path);
   if (!fout.is_open()) {
     RCLCPP_ERROR(
@@ -97,7 +105,8 @@ int main(int argc, char ** argv)
 
   RCLCPP_INFO(
     node->get_logger(),
-    "Filtered pseudo angles saved to: %s", output_path.c_str());
+    "Filtered pseudo angles saved to: %s",
+    output_path.c_str());
 
   rclcpp::shutdown();
   return 0;

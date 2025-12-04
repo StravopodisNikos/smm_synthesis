@@ -11,7 +11,7 @@ int main(int argc, char ** argv)
   rclcpp::init(argc, argv);
   auto node = rclcpp::Node::make_shared("structure_digit_setter");
 
-  // Locate package share dir
+  // Locate package share dir (smm_synthesis)
   std::string share_dir;
   try {
     share_dir = ament_index_cpp::get_package_share_directory("smm_synthesis");
@@ -25,6 +25,7 @@ int main(int argc, char ** argv)
 
   const std::string yaml_path = share_dir + "/config/yaml/assembly.yaml";
 
+  // Load assembly.yaml
   YAML::Node assembly;
   try {
     assembly = YAML::LoadFile(yaml_path);
@@ -36,6 +37,7 @@ int main(int argc, char ** argv)
     return 1;
   }
 
+  // Read structure digits
   int s2 = assembly["s2"].as<int>();
   int s3 = assembly["s3"].as<int>();
   int s5 = assembly["s5"].as<int>();
@@ -55,13 +57,13 @@ int main(int argc, char ** argv)
     return 1;
   }
 
-  // In ROS2 there is no global param server; this node holds the parameter.
+  // In ROS2 there is no global param server; this node defines its own parameter
   node->declare_parameter<int>("STRUCTURE_DIGIT", count);
   RCLCPP_INFO(
     node->get_logger(),
     "[structure_digit_setter] Declared parameter STRUCTURE_DIGIT = %d", count);
 
-  // Keep node alive so others can query the parameter via a param client if needed
+  // Keep node alive so other nodes can query this parameter via rclcpp::SyncParametersClient, etc.
   rclcpp::spin(node);
   rclcpp::shutdown();
   return 0;

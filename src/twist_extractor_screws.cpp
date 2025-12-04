@@ -8,13 +8,14 @@
 #include <yaml-cpp/yaml.h>
 
 #include "rclcpp/rclcpp.hpp"
-#include "ament_index_cpp/get_package_share_directory.hpp"
 
 // Include the Screws library (ROS2 version)
 #include "smm_screws/core/ScrewsKinematics.h"
 
 // Run for test (ROS2):
-// $ ros2 run smm_synthesis twist_extractor_screws --ros-args -p input_file:=gsai0.yaml
+// $ ros2 run smm_synthesis twist_extractor_screws --ros-args \
+//     -p input_file:=/home/nikos/ros2_ws/src/smm_data/synthesis/yaml/gsai0.yaml \
+//     -p output_file:=/home/nikos/ros2_ws/src/smm_data/synthesis/yaml/xi_ai_anat.yaml
 
 int main(int argc, char ** argv)
 {
@@ -34,20 +35,22 @@ int main(int argc, char ** argv)
     return 1;
   }
 
-  // --- Resolve package share dir instead of ros::package::getPath ---
-  std::string share_dir;
-  try {
-    share_dir = ament_index_cpp::get_package_share_directory("smm_synthesis");
-  } catch (const std::exception & e) {
+  // --- Get output file name from ROS 2 parameter (full path) ---
+  node->declare_parameter<std::string>("output_file", "");
+  std::string output_file;
+  node->get_parameter("output_file", output_file);
+
+  if (output_file.empty()) {
     RCLCPP_ERROR(
       node->get_logger(),
-      "Could not get package share directory for 'smm_synthesis': %s", e.what());
+      "No 'output_file' parameter provided. Use --ros-args "
+      "-p output_file:=/full/path/to/xi_ai_anat.yaml");
     rclcpp::shutdown();
     return 1;
   }
 
-  std::string input_path  = share_dir + "/config/yaml/" + yaml_file;
-  std::string output_path = share_dir + "/config/yaml/xi_ai_anat.yaml";
+  std::string input_path  = yaml_file;
+  std::string output_path = output_file;
 
   // --- Load input YAML ---
   YAML::Node root;
