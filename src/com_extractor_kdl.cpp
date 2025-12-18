@@ -6,7 +6,7 @@
 
 #include <rclcpp/rclcpp.hpp>
 
-#include <urdf/model.h>  // or <urdf/model.hpp> if you prefer
+#include <urdf/model.hpp>  // or <urdf/model.hpp> if you prefer
 #include <kdl_parser/kdl_parser.hpp>
 #include <kdl/tree.hpp>
 #include <kdl/chain.hpp>

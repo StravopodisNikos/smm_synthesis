@@ -203,7 +203,7 @@
         <geometry>
           <mesh filename="package://smm_synthesis/meshes/active_module_fixed.stl" scale="0.001 0.001 0.001"/>
         </geometry>
-              <material name="lightblack">
+	  <material name="lightblack">
         <color rgba="0.25 0.25 0.25 1"/>
       </material>
       </visual>
@@ -212,6 +212,58 @@
 	 <origin rpy="0 1.5708 1.5708" xyz="0 0.030 -0.015"/>
 	 <geometry>
 	   <box size="0.155 0.055 0.055 "/>
+	 </geometry>
+    </collision>        
+    </link>
+</xacro:macro>
+
+<!-- Active static block - no connector -->
+<xacro:macro name="active_static_no_conn_mesh" params="name origin_xyz origin_rpy color_rgba">
+    <link name="${name}">
+      <inertial>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <mass value ="${active_mass_static}" />
+        <inertia ixx="0.001" ixy="-1.292e-11" ixz="3.624e-12" iyy="4.195e-04" iyz="-9.613e-06" izz="0.001"/>
+      </inertial>
+      <visual>
+        <origin rpy="${origin_rpy}" xyz="${origin_xyz}" />
+        <geometry>
+          <mesh filename="package://smm_synthesis/meshes/active_module_no_conn_fixed.stl" scale="0.001 0.001 0.001"/>
+        </geometry>
+	  <material name="${name}_mat_color">
+        <color rgba="${color_rgba}"/>
+      </material>
+      </visual>
+    <collision>
+	 <origin rpy="0 0 1.5708" xyz="0 -0.06 0"/>
+	 <geometry>
+	   <box size="0.120 0.055 0.055 "/>
+	 </geometry>
+    </collision>        
+    </link>
+</xacro:macro>
+
+<!-- Active static block - no connector -->
+<xacro:macro name="active_static_no_conn_mesh_wrist2" params="name origin_xyz origin_rpy color_rgba">
+    <link name="${name}">
+      <inertial>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <mass value ="${active_mass_static}" />
+        <inertia ixx="0.001" ixy="-1.292e-11" ixz="3.624e-12" iyy="4.195e-04" iyz="-9.613e-06" izz="0.001"/>
+      </inertial>
+      <visual>
+        <origin rpy="${origin_rpy}" xyz="${origin_xyz}" />
+        <geometry>
+          <mesh filename="package://smm_synthesis/meshes/active_module_no_conn_fixed.stl" scale="0.001 0.001 0.001"/>
+        </geometry>
+	  <material name="${name}_mat_color">
+        <color rgba="${color_rgba}"/>
+      </material>
+      </visual>
+    <collision>
+	 <origin rpy="0 1.5708 0" xyz="0 0.0 -0.06"/>
+	 <geometry>
+	   <box size="0.120 0.055 0.055 "/>
 	 </geometry>
     </collision>        
     </link>
@@ -244,6 +296,59 @@
     </link>
 </xacro:macro>
 
+<!-- Active moving block-->
+<xacro:macro name="active_moving_link_mesh_wrist2" params="name origin_xyz origin_rpy">
+    <link name="${name}">
+      <inertial>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <mass value ="${active_mass_moving}" />
+        <inertia ixx="3.103e-04" ixy="-3.374e-13" ixz="1.202e-12" iyy="3.187e-04" iyz="8.958e-06" izz="5.995e-05"/>
+      </inertial>
+      <visual>
+        <origin rpy="${origin_rpy}" xyz="${origin_xyz}" />
+        <geometry>
+          <mesh filename="package://smm_synthesis/meshes/active_module_moving.stl" scale="0.001 0.001 0.001"/>
+        </geometry>
+        <material name="black">
+          <color rgba="0.1 0.1 0.1 1"/>
+        </material>
+      </visual>
+    <!-- Added on [16-2-24]. Checked visually by executing: $ roslaunch smm_synthesis smm_ros_gazebo.launch -->
+    <collision>
+	 <origin rpy="0 0 1.5708" xyz="0 -0.0625 -0.05"/>
+	 <geometry>
+	   <box size="0.15 0.06 0.011 "/>
+	 </geometry>
+    </collision>        
+    </link>
+</xacro:macro>
+
+<!-- Active A110 connector -->
+<xacro:macro name="active_a110_connector" params="name origin_xyz origin_rpy">
+    <link name="${name}">
+      <inertial>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <mass value ="0.1" />
+        <inertia ixx="1.0e-07" ixy="1.0e-16" ixz="1.0e-15" iyy="1.0e-07" iyz="1.0e-09" izz="1.0e-08"/>
+      </inertial>
+      <visual>
+        <origin rpy="${origin_rpy}" xyz="${origin_xyz}" />
+        <geometry>
+          <mesh filename="package://smm_synthesis/meshes/active_connector_frp54-a110.stl" scale="0.001 0.001 0.001"/>
+        </geometry>
+        <material name="semiblack">
+          <color rgba="0.15 0.25 0.15 1"/>
+        </material>
+      </visual>
+	<collision>
+		<origin rpy="1.5708 0 0" xyz="0 0.005 0"/>
+		<geometry>
+		<box size="0.08 0.08 0.015 "/>
+		</geometry>
+	</collision>        
+    </link>
+</xacro:macro>
+
 <!-- Synthetic joint parameters-->
  <xacro:macro name="dxlPROp_joint" params="active_name  active_origin_rpy active_origin_xyz active_parent active_child">
     <joint name="${active_name}" type="revolute">
@@ -251,6 +356,18 @@
       <parent link="${active_parent}" />
       <child link="${active_child}" />
       <axis xyz="1 0 0"/>
+      <limit effort="55" lower="-2" upper="2" velocity="4.0841"/>
+      <dynamics damping="10.0" friction="10.0"/> <!--added friction for Brushless DC Motor + Huge Reduction Gearbox [29-10-24] prev: 1.0,1.5-->
+    </joint>
+</xacro:macro>
+
+<!-- Synthetic joint parameters-->
+ <xacro:macro name="dxlPROp_wrist_joint" params="active_name  active_origin_rpy active_origin_xyz active_parent active_child">
+    <joint name="${active_name}" type="revolute">
+      <origin rpy="${active_origin_rpy}" xyz="${active_origin_xyz}" />
+      <parent link="${active_parent}" />
+      <child link="${active_child}" />
+      <axis xyz="0 1 0"/>
       <limit effort="55" lower="-2" upper="2" velocity="4.0841"/>
       <dynamics damping="10.0" friction="10.0"/> <!--added friction for Brushless DC Motor + Huge Reduction Gearbox [29-10-24] prev: 1.0,1.5-->
     </joint>
@@ -279,6 +396,34 @@
     		<origin rpy="0 0 0" xyz="0 0 0.015" />
       		<geometry>
         		  <cylinder length="0.055" radius="0.035"/>
+      		</geometry>
+    	</collision> 
+	</link>
+</xacro:macro>
+
+<!-- FORCE SENSOR CIRC ASSEMBLY - 6DOF ONLY [ASSEMBLED AFTER WRIST] -->
+<xacro:macro name="force_sensor_circ" params="name">
+	<link name="${name}">
+	    <inertial>
+	      <origin rpy="0 0 0" xyz="0 0 0"/>
+	      <mass value ="0.250" />
+	      <inertia ixx="5.294e-005" ixy="-2.2e-007" ixz="-3.787e-008" iyy="5.233e-005" iyz="-2.827e-008" izz="4.192e-005"/>
+	    </inertial>
+	    <visual>
+	      <origin rpy="-1.5708 -3.1416 0" xyz="0 0.0725 0"/>
+	      <geometry>
+	        <mesh filename="package://smm_synthesis/meshes/massage_circ_assembly.stl" scale="0.001 0.001 0.001"/>
+	      </geometry>
+	      <material name="edward">
+	        <!-- Color Pick: http://www.flatuicolorpicker.com/grey-rgba-color-model/ -->
+	        <color rgba="0.6705 0.7098 0.7098 1"/>
+	      </material>
+	    </visual>
+	<!-- Added on [16-2-24]. Checked visually by executing: $ roslaunch smm_synthesis smm_ros_gazebo.launch -->
+    	<collision>
+    		<origin rpy="1.5708 0 0" xyz="0 0.015 0" />
+      		<geometry>
+        		  <cylinder length="0.035" radius="0.03"/>
       		</geometry>
     	</collision> 
 	</link>
@@ -361,8 +506,35 @@
     	<collision>
     		<origin rpy="0 0 0" xyz="0 0 0.040" />
       		<geometry>
-        		  <!--cylinder length="0.065" radius="0.025"/-->
         		  <sphere radius="0.025"/>
+      		</geometry>
+    	</collision> 
+	</link>
+</xacro:macro>
+
+<!-- MASSAGE-TOOL-STL CIRC ASSEMBLY - 6DOF ONLY [ASSEMBLED AFTER WRIST] -->
+<xacro:macro name="massage_tool_stl_6dof" params="name">
+	<link name="${name}">
+	    <inertial>
+	      <origin rpy="0 0 0" xyz="0 0 0"/>
+	      <mass value ="0.250" />
+	      <inertia ixx="6.414e-005" ixy="0" ixz="0" iyy="6.414e-005" iyz="0" izz="4.986e-005"/>
+	    </inertial>
+	    <visual>
+	      <origin rpy="0 0 0" xyz="0 0 0"/>
+	      <geometry>
+	        <mesh filename="package://smm_synthesis/meshes/massage_tool_circ_assembly.stl" scale="0.001 0.001 0.001"/>
+	      </geometry>
+	      <material name="Porcelain">
+	        <!-- Color Pick: http://www.flatuicolorpicker.com/grey-rgba-color-model/ -->
+	        <color rgba="0.9254 0.9412 0.9413 1"/>
+	      </material>
+	    </visual>
+	<!-- Added on [16-2-24]. Checked visually by executing: $ roslaunch smm_synthesis smm_ros_gazebo.launch -->
+    	<collision>
+    		<origin rpy="0 0 0" xyz="0 0 0.02" />
+      		<geometry>
+        		  <sphere radius="0.03"/>
       		</geometry>
     	</collision> 
 	</link>

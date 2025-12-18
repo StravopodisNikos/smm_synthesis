@@ -1,0 +1,110 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- Reuse building blocks -->
+  <xacro:include filename="$(find smm_synthesis)/urdf/modules.xacro" />
+
+  <!--
+    Commands to validate:
+    $   xacro src/smm_class_pkgs/smm_synthesis/urdf/smm_structure_anatomy_assembly_6dof.xacro > /tmp/smm_6dof.urdf
+    $ check_urdf /tmp/smm_6dof.urdf
+  -->
+
+  <xacro:macro name="dynamixel_wrist" params="parent_link child_link prefix origin_xyz origin_rpy">
+
+    <xacro:property name="roll1" value="1" />
+    <xacro:property name="pitch" value="2" />
+    <xacro:property name="roll2" value="3" />
+
+    <joint name="${parent_link}__${prefix}_conn_${roll1}" type="fixed">
+      <origin xyz="${origin_xyz}" rpy="${origin_rpy}"/>
+      <parent link="${parent_link}"/>
+      <child  link="${prefix}_conn_${roll1}"/>
+    </joint>
+
+    <xacro:active_a110_connector
+      name="${prefix}_conn_${roll1}"
+      origin_xyz="0 0 0"
+      origin_rpy="0 0 0" />
+
+    <joint name="${prefix}_conn_${roll1}__${prefix}_dxl_${roll1}_sta" type="fixed">
+      <origin xyz="0 0.123 0.0" rpy="0 0 0" />
+      <parent link="${prefix}_conn_${roll1}" />
+      <child  link="${prefix}_dxl_${roll1}_sta" />
+    </joint>
+
+    <xacro:active_static_no_conn_mesh
+      name="${prefix}_dxl_${roll1}_sta"
+      origin_xyz="0 0 0"
+      origin_rpy="0 0 0"
+      color_rgba="0.10 0.10 0.80 1.0" />
+
+    <xacro:dxlPROp_wrist_joint
+      active_name="${prefix}_dxl_${roll1}_sta__${prefix}_dxl_${roll1}_mov"
+      active_origin_rpy="0 0 0"
+      active_origin_xyz="0 0.009 0"
+      active_parent="${prefix}_dxl_${roll1}_sta"
+      active_child="${prefix}_conn_${pitch}"/>
+
+    <xacro:active_a110_connector
+      name="${prefix}_conn_${pitch}"
+      origin_xyz="0 0 0"
+      origin_rpy="0 0 0" />
+
+    <joint name="${prefix}_conn_${pitch}__${prefix}_dxl_${pitch}_sta" type="fixed">
+      <origin xyz="0 0.03 0.075" rpy="0 0 0" /> 
+      <parent link="${prefix}_conn_${pitch}" />
+      <child  link="${prefix}_dxl_${pitch}_sta" />
+    </joint>
+
+    <xacro:active_static_no_conn_mesh_wrist2
+      name="${prefix}_dxl_${pitch}_sta"
+      origin_xyz="0 0 0" 
+      origin_rpy="1.5708 0 0" 
+      color_rgba="0.80 0.10 0.10 1.0" /> 
+    
+    <xacro:dxlPROp_wrist_joint
+      active_name="${prefix}_dxl_${pitch}_sta__${prefix}_dxl_${pitch}_mov"
+      active_origin_rpy="1.5708 0 0" 
+      active_origin_xyz="0 0 0"
+      active_parent="${prefix}_dxl_${pitch}_sta"
+      active_child="${prefix}_dxl_${pitch}_mov"/> 
+
+    <xacro:active_moving_link_mesh_wrist2
+      name="${prefix}_dxl_${pitch}_mov"
+      origin_xyz="0 -0.063 0"
+      origin_rpy="-1.5708 0 0"/> 
+
+    <joint name="${prefix}_dxl_${pitch}_mov__${prefix}_conn_${roll2}" type="fixed">
+      <origin xyz="0 -0.075 -0.054" rpy="-1.5708 0 0" />
+      <parent link="${prefix}_dxl_${pitch}_mov" />
+      <child  link="${prefix}_conn_${roll2}" />
+    </joint> 
+
+    <xacro:active_a110_connector
+      name="${prefix}_conn_${roll2}"
+      origin_xyz="0 0 0"
+      origin_rpy="0 0 0" />
+
+    <joint name="${prefix}_conn_${roll2}__${prefix}_dxl_${roll2}_sta" type="fixed">
+      <origin xyz="0 0.123 0" rpy="0 0 0" />
+      <parent link="${prefix}_conn_${roll2}" />
+      <child  link="${prefix}_dxl_${roll2}_sta" />
+    </joint> 
+
+    <xacro:active_static_no_conn_mesh
+      name="${prefix}_dxl_${roll2}_sta"
+      origin_xyz="0.0 0.0 0"
+      origin_rpy="0 0 0"
+      color_rgba="0.10 0.80 0.10 1.0" />
+
+    <xacro:dxlPROp_wrist_joint
+      active_name="${prefix}_dxl_${roll2}_sta__${child_link}"
+      active_origin_rpy="0 0 0"
+      active_origin_xyz="0 0.009 0"
+      active_parent="${prefix}_dxl_${roll2}_sta"
+      active_child="${child_link}"/>
+
+  </xacro:macro>
+
+</robot>

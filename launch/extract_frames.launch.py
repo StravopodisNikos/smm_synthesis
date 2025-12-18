@@ -17,7 +17,7 @@ import os
 def generate_launch_description():
     # 1) Argument: where to store YAMLs (default = your smm_data folder)
     default_data_dir = os.path.expanduser(
-        "~/ros2_ws/src/smm_data/synthesis/yaml"
+        "~/ros2_ws/src/smm_class_pkgs/smm_data/synthesis/yaml/"
     )
 
     data_dir_arg = DeclareLaunchArgument(

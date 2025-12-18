@@ -1,0 +1,112 @@
+#virtual_joint
+vj_parent: world
+vj_child: base_plate
+
+#joint1
+joint1_origin_rpy: 0 0 3.14159 #previous y=3.1416->buggy!
+joint1_origin_xyz: 0 0 0.005
+joint1_parent: base_plate
+joint1_child: base_link
+
+#base_link
+base_link_name: base_link
+base_link_origin_xyz: 0 0 0
+base_link_origin_rpy: 0 0 0.5
+
+#synthetics
+synthetic1_name: synthetic1 #base_link->pseudo_static_under
+synthetic1_origin_xyz: 0 0 0.048 # Px01 Py01 Pz01
+synthetic1_origin_rpy: 0 0 3.14159     # Rx01 Ry01 Rz01 <!-- y changed to 3.1416 from 0 to match real robot with visual. in matlab file this is done for r!!! -->
+
+synthetic2_name: synthetic2 #pseudo_moving->pseudo_static_back
+#synthetic2_origin_xyz: -0.075 0.1444 0 # Px011 \in [-0.025~0.025]  Py011 fixed@ Pz011 fixed@
+##synthetic2_origin_x: -0.075 #var \in [-0.075 ~ 0.025]
+synthetic2_origin_y: 0.1444 #ct
+#synthetic2_origin_z: -0.05 #ct
+#synthetic2_origin_rpy: 0 1.5708 0     # Rx011 fixed@ Ry011 \in [-1.5708,1.5708] Rz011 fixed@
+synthetic2_origin_r: 0 #ct
+##synthetic2_origin_p: 1.5708 #var \in [-1.5708 ~ 1.5708]
+synthetic2_origin_ry: 0 #ct
+
+synthetic3_name: synthetic3 # dxl_frame->pseudo_static_back
+#synthetic3_origin_xyz: 0 0.0955 -0.05 # Px01101 fixed Py01101 fixed Pz01101 \in [-0.13~-0.03]
+#synthetic3_origin_x: -0.05 #var
+synthetic3_origin_y: 0.0955 #ct
+#synthetic3_origin_z: -0.05 #var
+#synthetic3_origin_rpy: 0 0 0 # Rx01101  Ry01101  Rz01101 
+synthetic3_origin_r: 0 #ct
+#synthetic3_origin_p: 1.5708 #var
+synthetic3_origin_ry: 0 #ct
+
+synthetic4_name: synthetic4 #pseudo_moving->pseudo_static_under
+#synthetic4_origin_xyz: 0 0.101 0 # Rx01 Ry01 Rz01
+##synthetic4_origin_x: 0 #var \in [-0.025 ~ 0.025]
+synthetic4_origin_y: 0.101 #ct
+#synthetic4_origin_z: 0 #ct
+#synthetic4_origin_rpy: -1.5708 1.5708 0     # Px01 Py01 Pz01
+synthetic4_origin_r: -1.5708 #ct
+##synthetic4_origin_p: 1.5708 #var \in [-1.5708 ~ 1.5708]
+synthetic4_origin_ry: 0 #ct
+
+synthetic5_name: synthetic5 # dxl_frame->pseudo_static_under
+#synthetic5_origin_xyz: 0 0.0525 -0.015 
+#synthetic5_origin_x: 0 #ct
+synthetic5_origin_y: 0.0525 #ct
+#synthetic5_origin_z: -0.015 #var \in [-0.015~0.025]
+#synthetic5_origin_rpy: -1.5708 0 0  
+synthetic5_origin_r: -1.5708 #ct
+#synthetic5_origin_p: 0 #var \in [-1.5708 ~ 1.5708]
+synthetic5_origin_ry: 0 #ct
+
+#pseudos
+pseudo_a_name: pseudo_a
+pseudo_a_origin_xyz: -0.0375 0.2 -0.05
+pseudo_a_origin_rpy: 1.5708 0 0
+
+pseudo_b_name: pseudo_b
+pseudo_b_origin_xyz: -0.061 -0.167 -0.177
+pseudo_b_origin_rpy: 0 0 0
+
+#pseudojoints
+pseudo_name: pseudo1
+pseudo_origin_xyz: 0 0.025 0.118    
+pseudo_origin_r: 1.5708 #pseudo angle is added here
+pseudo_origin_p: 0
+pseudo_origin_y: 0
+
+# assembly fixed joints
+active2pseudo_name: active_assembly
+active2pseudo_origin_xyz: 0 0.1 0 
+#active2pseudo_origin_rpy: 0 1.5708 0
+active2pseudo_origin_r: 0
+#active2pseudo__origin_p: 1.5708
+active2pseudo_origin_ry: 0
+
+#active modules
+active_a_name: active_module_a
+active_a_origin_xyz: 0 0.071 -0.1425
+active_a_origin_rpy: -1.5708 0 0
+
+active_b_name: active_module_b
+active_b_origin_xyz: 0.0175 0 0 #changed x from default value:0 #changed z from default value:-0.0176
+active_b_origin_rpy: 0 1.5708 0 #changed pitch from default value:3.1416
+
+#active joints
+active_name: active
+active_origin_xyz: 0 0.032 0    
+active_origin_rpy: 0 1.5708 0 #changed from default value:0
+
+massage_tool_is_stl: true
+# when xacro visuals are used to visualize last link (massage_tool) 
+#massage_tool_joint
+massage_origin_xyz: 0 0 -0.04
+massage_origin_rpy: 0 0 0
+#massage_tool_xacro_visuals
+massage_tool_part1: massage_tool_1
+massage_tool_part2: massage_tool_2
+# when stl file is used to visualize last link (massage_tool) 
+#massage_tool_joint
+massage_tool_stl_origin_xyz: 0 0 -0.02
+massage_tool_stl_origin_rpy: 3.1416 0 0
+#massage_tool_stl
+massage_tool_stl: massage_tool

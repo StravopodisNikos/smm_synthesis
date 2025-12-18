@@ -23,7 +23,7 @@ import os
 def generate_launch_description():
     # 1. Base directory - where all synthesis yaml files are stored
     default_data_dir = os.path.expanduser(
-        "~/ros2_ws/src/smm_data/synthesis/yaml"
+        "~/ros2_ws/src/smm_class_pkgs/smm_data/synthesis/yaml/"
     )
     # 1.1. set arg to overwrite default dir in cli
     data_dir_arg = DeclareLaunchArgument(
