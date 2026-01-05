@@ -528,6 +528,7 @@ nikos@nikos-pc2:~/ros2_ws$ check_urdf /tmp/smm_6dof.urdf
 
 <!-- SPHERICAL WRIST COMPOSED OF DYNAMIXELS -->
 <xacro:property name="force_sensor" value="force_sensor_circ" />
+<xacro:property name="force_sensor_meas_frame" value="force_sensor_meas" />
 <xacro:dynamixel_wrist
 parent_link="${last_body_assembled}"
 child_link="${force_sensor}"
@@ -536,20 +537,28 @@ origin_xyz="0 0.103 0.0"
 origin_rpy="0 0 0" />
 
 <!-- FORCE SENSOR -->
-<xacro:force_sensor_circ name="${force_sensor}"/> 
+<xacro:force_sensor_circ name="${force_sensor}" meas_frame_name="${force_sensor_meas_frame}"/> 
 
 <!-- [1-3-24] Enable only 1 option for END-EFFECTOR-->
 <!-- Default option: massage_tool_is_stl = true  -->
 <xacro:if value="${massage_tool_is_stl}">
-	<joint name="${force_sensor}__massage_tool" type="fixed">
-		<origin rpy="-1.5708 0 0" xyz="0 0.060 0"/>
-		<parent link="${force_sensor}"/>
+
+	<joint name="${force_sensor_meas_frame}__massage_tool" type="fixed">
+		<origin rpy="0 -3.1416 0" xyz="0 0 -0.040"/>
+		<parent link="${force_sensor_meas_frame}"/>
 		<child link="${massage_tool_stl}"/>
 	</joint>
-	<xacro:massage_tool_stl_6dof name="${massage_tool_stl}" /> 
+
+  <xacro:massage_tool_stl_6dof
+  name="${massage_tool_stl}"
+  tcp_frame_name="tcp"
+  tcp_xyz="0 0 0.045"
+  tcp_rpy="0 0 0"/>
+
   <gazebo reference="${massage_tool_stl}">
     <material>Gazebo/Orange</material>
   </gazebo>
+
 </xacro:if>
 
 <!-- IV. Transmissions-->
@@ -643,5 +652,5 @@ origin_rpy="0 0 0" />
         	</noise>
       </plugin>
   </gazebo>
-  
+
 </robot>

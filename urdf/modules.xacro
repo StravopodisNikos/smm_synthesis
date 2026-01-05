@@ -373,6 +373,36 @@
     </joint>
 </xacro:macro>
 
+<!-- Synthetic joint parameters -->
+<xacro:macro name="dxlPROp_cont_wrist_joint"
+             params="active_name
+                     active_origin_rpy
+                     active_origin_xyz
+                     active_parent
+                     active_child
+                     is_continuous:=false">
+
+  <joint name="${active_name}"
+         type="${'continuous' if is_continuous else 'revolute'}">
+
+    <origin rpy="${active_origin_rpy}" xyz="${active_origin_xyz}" />
+    <parent link="${active_parent}" />
+    <child link="${active_child}" />
+    <axis xyz="0 1 0"/>
+
+    <!-- Limits only for revolute joints -->
+    <xacro:unless value="${is_continuous}">
+      <limit effort="55"
+             lower="-2"
+             upper="2"
+             velocity="4.0841"/>
+    </xacro:unless>
+
+    <dynamics damping="10.0" friction="10.0"/>
+  </joint>
+
+</xacro:macro>
+
 <!-- FORCE SENSOR -->
 <xacro:macro name="force_sensor" params="name">
 	<link name="${name}">
@@ -402,31 +432,45 @@
 </xacro:macro>
 
 <!-- FORCE SENSOR CIRC ASSEMBLY - 6DOF ONLY [ASSEMBLED AFTER WRIST] -->
-<xacro:macro name="force_sensor_circ" params="name">
-	<link name="${name}">
-	    <inertial>
-	      <origin rpy="0 0 0" xyz="0 0 0"/>
-	      <mass value ="0.250" />
-	      <inertia ixx="5.294e-005" ixy="-2.2e-007" ixz="-3.787e-008" iyy="5.233e-005" iyz="-2.827e-008" izz="4.192e-005"/>
-	    </inertial>
-	    <visual>
-	      <origin rpy="-1.5708 -3.1416 0" xyz="0 0.0725 0"/>
-	      <geometry>
-	        <mesh filename="package://smm_synthesis/meshes/massage_circ_assembly.stl" scale="0.001 0.001 0.001"/>
-	      </geometry>
-	      <material name="edward">
-	        <!-- Color Pick: http://www.flatuicolorpicker.com/grey-rgba-color-model/ -->
-	        <color rgba="0.6705 0.7098 0.7098 1"/>
-	      </material>
-	    </visual>
-	<!-- Added on [16-2-24]. Checked visually by executing: $ roslaunch smm_synthesis smm_ros_gazebo.launch -->
-    	<collision>
-    		<origin rpy="1.5708 0 0" xyz="0 0.015 0" />
-      		<geometry>
-        		  <cylinder length="0.035" radius="0.03"/>
-      		</geometry>
-    	</collision> 
-	</link>
+<xacro:macro name="force_sensor_circ" params="name meas_frame_name">
+  <!-- Physical sensor link -->
+  <link name="${name}">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <mass value="0.250"/>
+      <inertia ixx="5.294e-005" ixy="-2.2e-007" ixz="-3.787e-008"
+               iyy="5.233e-005" iyz="-2.827e-008" izz="4.192e-005"/>
+    </inertial>
+    <visual>
+      <origin rpy="-1.5708 -3.1416 0" xyz="0 0.0725 0"/>
+      <geometry>
+        <mesh filename="package://smm_synthesis/meshes/massage_circ_assembly.stl"
+              scale="0.001 0.001 0.001"/>
+      </geometry>
+      <material name="edward">
+        <color rgba="0.6705 0.7098 0.7098 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="1.5708 0 0" xyz="0 0.015 0"/>
+      <geometry>
+        <cylinder length="0.035" radius="0.03"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- Measurement frame (massless, invisible) -->
+  <link name="${meas_frame_name}"/>
+
+  <!-- Fixed joint defining measurement frame orientation -->
+  <joint name="${name}_meas_frame_joint" type="fixed">
+    <parent link="${name}"/>
+    <child link="${meas_frame_name}"/>
+    <!-- Here we define the sensor coordinate frame - aligned with datasheet axes !!! -->
+    <origin xyz="0 0.02 0"
+            rpy="1.5708 1.5708 0"/>
+  </joint>
+
 </xacro:macro>
 
 <!-- END-EFFECTOR-TOOL/MASSAGE-TOOL-XACRO-VISUALS-->
@@ -539,5 +583,49 @@
     	</collision> 
 	</link>
 </xacro:macro>
+
+<!-- MASSAGE-TOOL-STL CIRC ASSEMBLY - 6DOF ONLY [ASSEMBLED AFTER WRIST] -->
+<xacro:macro name="massage_tool_stl_6dof" params="name tcp_frame_name tcp_xyz:='0 0 0' tcp_rpy:='0 0 0'">
+
+  <!-- Physical tool link -->
+  <link name="${name}">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <mass value="0.250" />
+      <inertia ixx="6.414e-005" ixy="0" ixz="0"
+               iyy="6.414e-005" iyz="0" izz="4.986e-005"/>
+    </inertial>
+
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="package://smm_synthesis/meshes/massage_tool_circ_assembly.stl"
+              scale="0.001 0.001 0.001"/>
+      </geometry>
+      <material name="Porcelain">
+        <color rgba="0.9254 0.9412 0.9413 1"/>
+      </material>
+    </visual>
+
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0.02" />
+      <geometry>
+        <sphere radius="0.03"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- TCP frame: massless, collision-less -->
+  <link name="${tcp_frame_name}"/>
+
+  <!-- Fixed joint defining TCP pose relative to the tool link -->
+  <joint name="${name}__tcp" type="fixed">
+    <parent link="${name}"/>
+    <child link="${tcp_frame_name}"/>
+    <origin xyz="${tcp_xyz}" rpy="${tcp_rpy}"/>
+  </joint>
+
+</xacro:macro>
+
 
 </robot>
