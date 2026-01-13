@@ -35,6 +35,8 @@
   <depend>yaml-cpp</depend>
   <depend>smm_screws</depend>
 
+  <exec_depend>smm_viz_tools</exec_depend>
+
   <export>
     <build_type>ament_cmake</build_type>
   </export>

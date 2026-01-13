@@ -128,12 +128,15 @@ int main(int argc, char ** argv)
 
     // 3) omega = axis direction (space frame)
     Eigen::Vector3d omega_d;
-    if (frame_name == "gsa00" || idx == 0) {
-      // Base joint: use Z axis of that frame
-      omega_d = T.block<3,1>(0, 2);
+    if (idx == 0) {
+        // joint 1 (base) → Z
+        omega_d = T.block<3,1>(0, 2);
+    } else if (idx == 1 || idx == 2) {
+        // joints 2 & 3 → X
+        omega_d = T.block<3,1>(0, 0);
     } else {
-      // Other joints: use X axis of that frame (Dynamixel-style)
-      omega_d = T.block<3,1>(0, 0);
+        // wrist joints (idx >= 3) → Y
+        omega_d = T.block<3,1>(0, 1);
     }
 
     // Cast to float for ScrewsKinematics

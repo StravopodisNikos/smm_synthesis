@@ -1,3 +1,5 @@
+## Set the SMM active dof, available: 4-6
+dof: 6
 ## structure string definition
 # MATLAB VARIABLE: [structure], MATLAB FILE: [insert_robot_gazebo]
 s1: 0   # default
@@ -7,8 +9,8 @@ s4: 0
 s5: 31
 s6: 31  # cannot be 9 if s5 is 9
 s7: 0
-s8: 21  # [6dof only] cannot be 9
-s9: 31  # [6dof only]
+s8: 21  # [6dof only] cannot be 9 for 4,5,6 dof. for 3dof MUST be 9
+s9: 31  # [6dof only] for 3dof MUST be 9
 ## assembly parameters setting
 # MATLAB VARIABLE: [assembly_parameters], MATLAB FILE: [insert_robot_gazebo]
 #synthetic_origin_xzp_1_123: -> x(4-6):Here syn4(under 21) or syn2(back31) are passed
@@ -23,7 +25,6 @@ synthetic_origin_xzp_2_p: 1.5708
 synthetic_origin_xzp_3_x:  -0.0400
 synthetic_origin_xzp_3_z:  0.00000
 synthetic_origin_xzp_3_p:  1.5708
-
 # [6dof only] synthetic_origin_xzp_4_123: -> not yet in ga-chromosome 
 synthetic_origin_xzp_4_x: 0.0050
 synthetic_origin_xzp_4_z: 0.0250
