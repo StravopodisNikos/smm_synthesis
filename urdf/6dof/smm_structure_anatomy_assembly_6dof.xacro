@@ -35,9 +35,9 @@ nikos@nikos-pc2:~/ros2_ws$ check_urdf /tmp/smm_6dof.urdf
 <xacro:include filename="$(find smm_synthesis)/urdf/dynamixel_wrist.xacro" />
 
 <!-- I.2.1	INCLUDE YAML WITH FIXED CONNECTIVITY/ASSEMBLY PARAMETERS-->
-<xacro:property name="connectivity_yaml" value="$(find smm_synthesis)/config/yaml/connectivity_6dof.yaml" />
+<xacro:property name="connectivity_yaml" value="$(find smm_synthesis)/config/yaml/6dof/connectivity_6dof.yaml" />
 <!-- I.2.2	INCLUDE YAML WITH DESIRED STRUCTURE/ANATOMY PARAMETERS-->
-<xacro:property name="assembly_yaml" value="$(find smm_synthesis)/config/yaml/assembly_6dof.yaml" /> 
+<xacro:property name="assembly_yaml" value="$(find smm_synthesis)/config/yaml/6dof/assembly_6dof.yaml" /> 
 
 <!-- VIRTUAL JOINT-->
 <xacro:property name="virtual_joint" value="${xacro.load_yaml(connectivity_yaml)}"/>

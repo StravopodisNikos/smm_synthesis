@@ -27,12 +27,15 @@
 <!-- I.2.	INCLUDE XACRO THAT CONTAINS JOINT TRANSMISSION BLOCKS-->
 <xacro:include filename="$(find smm_synthesis)/urdf/transmissions.xacro" />
 <!-- I.3	INCLUDE YAML WITH FIXED CONNECTIVITY/ASSEMBLY PARAMETERS-->
-<xacro:property name="connectivity_yaml" value="$(find smm_synthesis)/config/yaml/connectivity.yaml" />
+<xacro:property name="connectivity_yaml" value="$(find smm_synthesis)/config/yaml/3dof/connectivity_3dof.yaml" />
 <!-- I.4	INCLUDE YAML WITH DESIRED STRUCTURE/ANATOMY PARAMETERS-->
 <!-- <xacro:property name="pseudo_angles_definitions" value="$(find smm_synthesis)/config/yaml/pseudo_angles.yaml" /> --> <!-- DEPRECATED -->
 <!-- <xacro:property name="structure_string_definitions" value="$(find smm_synthesis)/config/yaml/structure_string.yaml" /> -->  <!-- DEPRECATED -->
 <!-- <xacro:property name="ovidius_assembly_parameters_file" value="$(find smm_synthesis)/config/yaml/smm_assembly_parameters.yaml" /> -->  <!-- DEPRECATED -->
-<xacro:property name="assembly_yaml" value="$(find smm_synthesis)/config/yaml/assembly.yaml" /> <!-- [26-4-25] MERGES YAML FILES: structure_string, smm_assembly_parameters, pseudo_angles -->
+
+<!-- [26-04-25] NEW ASSEMBLY TEMPLATE CREATED: MERGES YAML FILES: structure_string, smm_assembly_parameters, pseudo_angles -->
+<!-- [07-02-26] CAHNGED FOLDER STRUCTURE IN ORDER TO BE USER-FRIENDLY FOR MULTIPLE DOF's-->
+<xacro:property name="assembly_yaml" value="$(find smm_synthesis)/config/yaml/3dof/assembly_3dof.yaml" /> 
 
 <!-- VIRTUAL JOINT-->
 <xacro:property name="virtual_joint" value="${xacro.load_yaml(connectivity_yaml)}"/>
