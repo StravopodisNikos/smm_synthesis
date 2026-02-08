@@ -120,48 +120,52 @@ int main(int argc, char** argv)
   // Extract frames incrementally along the chain
   std::map<std::string, Eigen::Matrix4d> frames_out;
 
-  // gsa00 = compensated identity (root frame)
-  frames_out["gsa00"] = C * Eigen::Matrix4d::Identity();
-
   KDL::Frame T = KDL::Frame::Identity();
-  int active_idx = 0;
 
-  for (unsigned int i = 0; i < chain.getNrOfSegments(); ++i) {
+  int active_count = 0;  // = number of rotational joints (this will be DOF)
+
+  for (unsigned int i = 0; i < chain.getNrOfSegments(); ++i)
+  {
     const KDL::Segment& seg = chain.getSegment(i);
 
-    // q=0 for pose extraction
+    // accumulate pose at q=0
     T = T * seg.pose(0.0);
 
     const KDL::Joint& j = seg.getJoint();
     if (!isRotationalJoint(j)) {
-      continue;
+      continue;  // skip fixed/prismatic segments
     }
 
     // This segment introduces an active rotational joint.
-    ++active_idx;
-
-    Eigen::Matrix4d tf = KDLFrameToEigen(T);
+    Eigen::Matrix4d tf     = KDLFrameToEigen(T);
     Eigen::Matrix4d tf_comp = C * tf;
 
-    // Naming: gsa10, gsa20, ..., gsaN0
-    const std::string key = "gsa" + std::to_string(active_idx) + "0";
+    // IMPORTANT: first active joint -> gsa00,
+    // second       -> gsa10, etc.
+    const std::string key =
+      "gsa" + std::to_string(active_count) + "0";
+
     frames_out[key] = tf_comp;
 
     RCLCPP_INFO(node->get_logger(),
-                "Active #%d: segment='%s', joint='%s' -> key='%s'",
-                active_idx,
+                "Active joint #%d: segment='%s', joint='%s' -> key='%s'",
+                active_count,
                 seg.getName().c_str(),
                 j.getName().c_str(),
                 key.c_str());
+
+    ++active_count;
   }
 
-  if (active_idx < 3 || active_idx > 6) {
+  if (active_count < 3 || active_count > 6) {
     RCLCPP_WARN(node->get_logger(),
                 "Detected %d rotational joints on chain. Expected 3..6. "
-                "Continuing anyway.", active_idx);
+                "Continuing anyway.", active_count);
   } else {
-    RCLCPP_INFO(node->get_logger(), "Detected %d-DOF active chain.", active_idx);
+    RCLCPP_INFO(node->get_logger(),
+                "Detected %d-DOF active chain.", active_count);
   }
+
 
   // Write YAML (16 values per frame, row-major)
   YAML::Emitter out;

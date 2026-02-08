@@ -264,8 +264,8 @@ int main(int argc, char **argv)
                     "Will output %d CoM groups (3–6 DoF range).", groups_to_use);
     }
 
-    // 9) Build final map: gsl00, gsl10, gsl20, ... depending on groups_to_use
-    std::map<std::string, Eigen::Matrix4d> com_frames;
+    // 9) Build final map: gsl00, gsl10, gsl20, ... (store COM as [x, y, z] in world frame)
+    std::map<std::string, Eigen::Vector3d> com_positions;
 
     for (int k = 0; k < groups_to_use; ++k)
     {
@@ -281,51 +281,28 @@ int main(int argc, char **argv)
 
         Eigen::Vector3d com_world = agg.weighted_world_com / agg.mass;
 
-        // Orientation: use world->link frame of the group's starting link
-        int link_idx = group_start_indices[g_idx];
-        const KDL::Frame &w_T_group_link = world_T_link[link_idx];
-        Eigen::Matrix4d T = KDLFrameToEigen(w_T_group_link);
-
-        // Overwrite translation part with CoM position
-        T(0, 3) = com_world(0);
-        T(1, 3) = com_world(1);
-        T(2, 3) = com_world(2);
-
-        // Internal name gsl00, gsl10, gsl20, ...
         std::string internal_name = "gsl" + std::to_string(k) + "0";
-        com_frames[internal_name] = T;
+        com_positions[internal_name] = com_world;
 
+        int link_idx = group_start_indices[g_idx];
         RCLCPP_INFO(node->get_logger(),
-                    "Group %d (start link='%s') → '%s', mass = %f",
+                    "Group %d (start link='%s') → '%s', mass = %f, CoM = [%f, %f, %f]",
                     g_idx, link_names[link_idx].c_str(),
-                    internal_name.c_str(), agg.mass);
+                    internal_name.c_str(), agg.mass,
+                    com_world(0), com_world(1), com_world(2));
     }
 
-    if (com_frames.empty())
-    {
-        RCLCPP_ERROR(node->get_logger(),
-                     "After filtering, no CoM frames to write.");
-        rclcpp::shutdown();
-        return 1;
-    }
-
-    // 10) Write YAML (same format: map of gslXX → 16-number sequence row-major)
+    // 10) Write YAML: gslXX → [x, y, z]
     YAML::Emitter out;
     out << YAML::BeginMap;
-    for (const auto &kv : com_frames)
+    for (const auto &kv : com_positions)
     {
         out << YAML::Key << kv.first << YAML::Value << YAML::BeginSeq;
-        const Eigen::Matrix4d &mat = kv.second;
-        for (int i = 0; i < 4; ++i)
-        {
-            for (int j = 0; j < 4; ++j)
-            {
-                out << mat(i, j);
-            }
-        }
+        out << kv.second(0) << kv.second(1) << kv.second(2);
         out << YAML::EndSeq;
     }
     out << YAML::EndMap;
+
 
     std::ofstream fout(output_file);
     if (!fout.is_open())

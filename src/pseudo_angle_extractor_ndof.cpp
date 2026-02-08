@@ -6,12 +6,11 @@
 
 #include <yaml-cpp/yaml.h>
 #include "rclcpp/rclcpp.hpp"
-#include "ament_index_cpp/get_package_share_directory.hpp"
 
 int main(int argc, char ** argv)
 {
   rclcpp::init(argc, argv);
-  auto node = rclcpp::Node::make_shared("pseudo_angle_extractor");
+  auto node = rclcpp::Node::make_shared("pseudo_angle_extractor_ndof");
 
   // --- 1. Get output_file as FULL PATH from ROS 2 parameter ---
   node->declare_parameter<std::string>("output_file", "");
@@ -25,29 +24,29 @@ int main(int argc, char ** argv)
     return 1;
   }
 
-  // --- 2. Locate assembly.yaml inside the smm_synthesis package ---
-  std::string share_dir;
-  try {
-    share_dir = ament_index_cpp::get_package_share_directory("smm_synthesis");
-  } catch (const std::exception & e) {
+  // --- 2. Get assembly_yaml parameter (DOF-specific TEMPLATE) ---
+  // e.g. <pkg_share>/config/yaml/3dof/assembly_3dof.yaml
+  //      <pkg_share>/config/yaml/6dof/assembly_6dof.yaml
+  node->declare_parameter<std::string>("assembly_yaml", "");
+  std::string assembly_path = node->get_parameter("assembly_yaml").as_string();
+  if (assembly_path.empty()) {
     RCLCPP_ERROR(
       node->get_logger(),
-      "Failed to get package share directory for 'smm_synthesis': %s", e.what());
+      "No 'assembly_yaml' parameter provided. This must point to the "
+      "DOF-specific assembly template (e.g. .../assembly_6dof.yaml).");
     rclcpp::shutdown();
     return 1;
   }
 
-  const std::string input_path = share_dir + "/config/yaml/assembly_6dof.yaml";
-
-  // --- 3. Load assembly.yaml ---
+  // --- 3. Load assembly template YAML ---
   YAML::Node root;
   try {
-    root = YAML::LoadFile(input_path);
+    root = YAML::LoadFile(assembly_path);
   } catch (const std::exception & e) {
     RCLCPP_ERROR(
       node->get_logger(),
-      "Failed to load assembly.yaml ('%s'): %s",
-      input_path.c_str(), e.what());
+      "Failed to load assembly template ('%s'): %s",
+      assembly_path.c_str(), e.what());
     rclcpp::shutdown();
     return 1;
   }
@@ -79,8 +78,9 @@ int main(int argc, char ** argv)
     if (!root[spec.s_key]) {
       RCLCPP_WARN(
         node->get_logger(),
-        "Structure digit '%s' not found in assembly.yaml, skipping corresponding angle '%s'.",
-        spec.s_key.c_str(), spec.angle_key.c_str());
+        "Structure digit '%s' not found in assembly template '%s', "
+        "skipping corresponding angle '%s'.",
+        spec.s_key.c_str(), assembly_path.c_str(), spec.angle_key.c_str());
       continue;
     }
 
@@ -95,8 +95,8 @@ int main(int argc, char ** argv)
     if (!root[spec.angle_key]) {
       RCLCPP_WARN(
         node->get_logger(),
-        "Angle key '%s' not found in assembly.yaml, even though %s != 9. Skipping.",
-        spec.angle_key.c_str(), spec.s_key.c_str());
+        "Angle key '%s' not found in assembly template '%s', even though %s != 9. Skipping.",
+        spec.angle_key.c_str(), assembly_path.c_str(), spec.s_key.c_str());
       continue;
     }
 
@@ -107,7 +107,7 @@ int main(int argc, char ** argv)
       RCLCPP_ERROR(
         node->get_logger(),
         "Failed to parse '%s' as float in '%s': %s",
-        spec.angle_key.c_str(), input_path.c_str(), e.what());
+        spec.angle_key.c_str(), assembly_path.c_str(), e.what());
       rclcpp::shutdown();
       return 1;
     }

@@ -12,7 +12,7 @@
 #include "rclcpp/rclcpp.hpp"
 
 // Your screw-theory core
-#include "smm_screws/core/ScrewsKinematics.h"
+#include "smm_screws/core/ScrewsMain.h"
 
 // HOW TO USE (example):
 // ros2 run smm_synthesis twist_extractor_screws_ndof \
@@ -82,23 +82,24 @@ int main(int argc, char ** argv)
 
   std::sort(gsa_keys.begin(), gsa_keys.end());
 
-  // Optional: limit between 3 and 6 DOF if you want to be strict
-  if (gsa_keys.size() < 3 || gsa_keys.size() > 6) {
+  const int dof = static_cast<int>(gsa_keys.size()) - 1;  // gsa00 + one per joint
+
+  if (dof < 3 || dof > 6) {
     RCLCPP_WARN(
       node->get_logger(),
-      "Found %zu 'gsa*' frames. Expected between 3 and 6 for SMM. Proceeding anyway.",
-      gsa_keys.size());
+      "Found %zu 'gsa*' frames → %d joints (size-1). Expected 3..6 joints for SMM. Proceeding anyway.",
+      gsa_keys.size(), dof);
   }
 
   // --- Screw kinematics core ---
-  ScrewsKinematics kin;
+  ScrewsMain screws;
 
   // Store twists
   std::map<std::string, Eigen::Matrix<float, 6, 1>> twists;
 
-  // --- For each gsa frame: build a twist ---
-  for (std::size_t idx = 0; idx < gsa_keys.size(); ++idx) {
-    const std::string & frame_name = gsa_keys[idx];
+  // --- For each joint (NOT all gsa frames) build a twist ---
+  for (int joint_idx = 0; joint_idx < dof; ++joint_idx) {
+    const std::string & frame_name = gsa_keys[static_cast<std::size_t>(joint_idx)];
 
     if (!root[frame_name]) {
       RCLCPP_WARN(
@@ -126,32 +127,33 @@ int main(int argc, char ** argv)
     // 2) q = translation
     Eigen::Vector3d q_d = T.block<3,1>(0, 3);
 
-    // 3) omega = axis direction (space frame)
+    // 3) omega = axis direction (space frame) – same rules as before
     Eigen::Vector3d omega_d;
-    if (idx == 0) {
-        // joint 1 (base) → Z
-        omega_d = T.block<3,1>(0, 2);
-    } else if (idx == 1 || idx == 2) {
-        // joints 2 & 3 → X
-        omega_d = T.block<3,1>(0, 0);
+    if (joint_idx == 0) {
+      // joint 1 (base) → Z
+      omega_d = T.block<3,1>(0, 2);
+    } else if (joint_idx == 1 || joint_idx == 2) {
+      // joints 2 & 3 → X
+      omega_d = T.block<3,1>(0, 0);
     } else {
-        // wrist joints (idx >= 3) → Y
-        omega_d = T.block<3,1>(0, 1);
+      // wrist joints (joint_idx >= 3) → Y
+      omega_d = T.block<3,1>(0, 1);
     }
 
-    // Cast to float for ScrewsKinematics
+    // 4) Cast to float and build twist
     Eigen::Vector3f q     = q_d.cast<float>();
     Eigen::Vector3f omega = omega_d.cast<float>();
 
     Eigen::Matrix<float, 6, 1> twist = kin.createTwist(omega, q);
 
-    // Twist key: xi_a<i>_0  (0-based index)
-    std::string twist_key = "xi_a" + std::to_string(idx) + "_0";
+    // Twist key: xi_a<joint_idx>_0
+    std::string twist_key = "xi_a" + std::to_string(joint_idx) + "_0";
     twists[twist_key] = twist;
 
     std::cout << "\nFrame: " << frame_name << " → " << twist_key;
     std::cout << "\nTwist: " << twist.transpose() << "\n";
   }
+
 
   // --- Save twists to YAML ---
   YAML::Emitter out;

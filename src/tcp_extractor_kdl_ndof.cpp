@@ -17,7 +17,7 @@
 int main(int argc, char ** argv)
 {
   rclcpp::init(argc, argv);
-  auto node = rclcpp::Node::make_shared("tcp_extractor_kdl");
+  auto node = rclcpp::Node::make_shared("tcp_extractor_kdl_ndof");
 
   using namespace std::chrono_literals;
 

@@ -93,7 +93,7 @@ def generate_launch_description():
     xacro_file = os.path.join(
         pkg_share,
         "urdf",
-        "smm_structure_anatomy_assembly.xacro", 
+        "smm_structure_anatomy_assembly_6dof.xacro", 
     )
 
     # 5. Assign the robot_description from xacro
@@ -139,59 +139,66 @@ def generate_launch_description():
         #arguments=["-d", os.path.join(pkg_share, "config", "smm_synthesis_config.rviz")],
     )
 
-    # 7.4 frame_extractor_kdl – SAME logic as your working extract_frames.launch.py
-    frame_extractor_node = Node(
+    # 7.4 active_frames_extractor_ndof 
+    active_frames_extractor_ndof_node = Node(
         package="smm_synthesis",
-        executable="frame_extractor_kdl",
-        name="frame_extractor_kdl",
+        executable="active_frames_extractor_ndof",
+        name="active_frames_extractor_ndof",
         output="screen",
         parameters=[
             {"output_file": frame_yaml_path},          # FULL PATH
             {"robot_description": robot_description},  # URDF as string
+            {"root_link": "base_link"},
+            {"tip_link": "tcp"},
+            {"apply_rotz_minus_pi": True},
         ],
     )
 
-    # 7.5 com_extractor_kdl – writes COMs to gsli0.yaml
-    com_extractor_node = Node(
+    # 7.5 com_frames_extractor_ndof
+    com_extractor_ndof_node = Node(
         package="smm_synthesis",
-        executable="com_extractor_kdl",
-        name="com_extractor_kdl",
+        executable="com_extractor_kdl_ndof",
+        name="com_extractor_kdl_ndof",
         output="screen",
         parameters=[
-            {"output_file": com_yaml_path},            # FULL PATH
-            {"robot_description": robot_description},  # same URDF string
+            {"output_file": com_yaml_path},
+            {"robot_description": robot_description},
+            {"tip_link": "tcp"},
+            {"base_link_name": "base_link"},
         ],
     )
 
-    # 7.6 inertia extractor saves the Mscomi0.yaml
-    inertia_extractor_node = Node(
+    # 7.6 inertia_extractor_ndof
+    inertia_extractor_ndof_node = Node(
         package="smm_synthesis",
-        executable="inertia_extractor_kdl",
-        name="inertia_extractor_kdl",
+        executable="inertia_extractor_kdl_ndof",
+        name="inertia_extractor_kdl_ndof",
         output="screen",
         parameters=[
-            {"output_file": inertia_yaml_path},            # FULL PATH
-            {"robot_description": robot_description},  # same URDF string
+            {"output_file": inertia_yaml_path},
+            {"robot_description": robot_description},
         ],
     )
 
     # 7.7 tcp extractor saves the gst0.yaml
-    tcp_extractor_node = Node(
+    tcp_extractor_ndof_node = Node(
         package="smm_synthesis",
-        executable="tcp_extractor_kdl",
-        name="tcp_extractor_kdl",
+        executable="tcp_extractor_kdl_ndof",
+        name="tcp_extractor_kdl_ndof",
         output="screen",
         parameters=[
             {"output_file": tcp_yaml_path},            # FULL PATH
             {"robot_description": robot_description},  # same URDF string
+            {"tip_link": "tcp"},
+            {"base_link": "base_link"},
         ],
     )
 
     # 7.8 active twists extractor saves the xi_ai_anat.yaml
-    act_twist_extractor_node = Node(
+    act_twist_extractor_ndof_node = Node(
         package="smm_synthesis",
-        executable="twist_extractor_screws",
-        name="twist_extractor_screws",
+        executable="twist_extractor_screws_ndof",
+        name="twist_extractor_screws_ndof",
         output="screen",
         parameters=[
             {"input_file": frame_yaml_path},            # FULL PATH
@@ -200,10 +207,10 @@ def generate_launch_description():
     )
 
     # 7.9 passive frame_extractor_kdl
-    pas_frame_extractor_node = Node(
+    pas_frame_extractor_ndof_node = Node(
         package="smm_synthesis",
-        executable="passive_frame_extractor_kdl",
-        name="passive_frame_extractor_kdl",
+        executable="passive_frame_extractor_kdl_ndof",
+        name="passive_frame_extractor_kdl_ndof",
         output="screen",
         parameters=[
             {"output_file": pas_frame_yaml_path},          # FULL PATH
@@ -212,10 +219,10 @@ def generate_launch_description():
     )
 
     # 7.10 passive twists extractor saves the xi_pj_anat.yaml
-    pas_twist_extractor_node = Node(
+    pas_twist_extractor_ndof_node = Node(
         package="smm_synthesis",
-        executable="passive_twist_extractor_screws",
-        name="passive_twist_extractor_screws",
+        executable="passive_twist_extractor_screws_ndof",
+        name="passive_twist_extractor_screws_ndof",
         output="screen",
         parameters=[
             {"input_file": pas_frame_yaml_path},            # FULL PATH
@@ -224,10 +231,10 @@ def generate_launch_description():
     )
 
     # 7.11 passive angle extractor saves the q_pj_anat.yaml
-    pseudo_angle_extractor_node = Node(
+    pseudo_angle_extractor_ndof_node = Node(
         package="smm_synthesis",
-        executable="pseudo_angle_extractor",
-        name="pseudo_angle_extractor",
+        executable="pseudo_angle_extractor_ndof",
+        name="pseudo_angle_extractor_ndof",
         output="screen",
         parameters=[
             {"output_file": pseudo_angle_yaml_path},
@@ -235,10 +242,10 @@ def generate_launch_description():
     )
 
     # 7.12 structure digit set spnning node to keep param alive in ros2
-    structure_digit_node = Node(
+    structure_digit_ndof_node = Node(
         package="smm_synthesis",
-        executable="structure_digit_setter",
-        name="structure_digit_setter",
+        executable="structure_digit_setter_ndof",
+        name="structure_digit_setter_ndof",
         output="screen",
     )
 
@@ -259,14 +266,15 @@ def generate_launch_description():
             robot_state_publisher_node,
             joint_state_publisher_node,
             rviz_node,
-            frame_extractor_node,
-            com_extractor_node,
-            inertia_extractor_node,
-            tcp_extractor_node,
-            act_twist_extractor_node,
-            pas_frame_extractor_node,
-            pas_twist_extractor_node,
-            pseudo_angle_extractor_node,
-            structure_digit_node,
+            active_frames_extractor_ndof_node,
+            com_extractor_ndof_node,
+            inertia_extractor_ndof_node,
+            tcp_extractor_ndof_node,
+            act_twist_extractor_ndof_node,
+            pas_frame_extractor_ndof_node,
+            pas_twist_extractor_ndof_node,
+            pseudo_angle_extractor_ndof_node,
+            structure_digit_ndof_node,
+
         ]
     )

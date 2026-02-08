@@ -59,7 +59,7 @@ Eigen::Matrix3d SkewSymmetric(const Eigen::Vector3d & v)
 int main(int argc, char ** argv)
 {
   rclcpp::init(argc, argv);
-  auto node = rclcpp::Node::make_shared("inertia_extractor_kdl");
+  auto node = rclcpp::Node::make_shared("inertia_extractor_kdl_ndof");
 
   using namespace std::chrono_literals;
 
@@ -264,9 +264,23 @@ int main(int argc, char ** argv)
   // ---------------------------------------------------------------------------
   // 5) Write YAML (full path output_filename)
   // ---------------------------------------------------------------------------
+  int nbodies = static_cast<int>(spatial_inertias.size());
+
+  if (nbodies < 3 || nbodies > 6) {
+    RCLCPP_WARN(
+      node->get_logger(),
+      "Extracted %d spatial inertia bodies (Mscomxx). "
+      "Expected between 3 and 6 for SMM Ndof.",
+      nbodies);
+  } else {
+    RCLCPP_INFO(
+      node->get_logger(),
+      "Extracted %d-DoF spatial inertias (3–6 DOF range).",
+      nbodies);
+  }
+
   YAML::Emitter out;
   out << YAML::BeginMap;
-
   for (const auto & item : spatial_inertias) {
     out << YAML::Key << item.first << YAML::Value << YAML::BeginSeq;
     const auto & M = item.second;
@@ -277,8 +291,8 @@ int main(int argc, char ** argv)
     }
     out << YAML::EndSeq;
   }
-
   out << YAML::EndMap;
+
 
   std::ofstream fout(output_filename);
   if (!fout.is_open()) {

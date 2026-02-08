@@ -36,7 +36,7 @@ Eigen::Matrix4d KDLFrameToEigen(const KDL::Frame & frame)
 int main(int argc, char ** argv)
 {
   rclcpp::init(argc, argv);
-  auto node = rclcpp::Node::make_shared("passive_frame_extractor_kdl");
+  auto node = rclcpp::Node::make_shared("passive_frame_extractor_kdl_ndof");
 
   // --- 1) Output file param ---
   node->declare_parameter<std::string>("output_file", "");
@@ -49,20 +49,8 @@ int main(int argc, char ** argv)
     return 1;
   }
 
-  // --- 2) Assembly YAML: now configurable, default to <share>/config/yaml/assembly.yaml ---
+  // --- 2) Assembly YAML: reads from "connected" template
   std::string default_assembly_path;
-  try {
-    const std::string share_dir =
-      ament_index_cpp::get_package_share_directory("smm_synthesis");
-    default_assembly_path = share_dir + "/config/yaml/assembly_6dof.yaml";
-  } catch (const std::exception & e) {
-    RCLCPP_ERROR(
-      node->get_logger(),
-      "Failed to get package share directory for 'smm_synthesis': %s", e.what());
-    rclcpp::shutdown();
-    return 1;
-  }
-
   node->declare_parameter<std::string>("assembly_yaml", default_assembly_path);
   std::string assembly_path = node->get_parameter("assembly_yaml").as_string();
 

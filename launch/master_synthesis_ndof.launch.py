@@ -1,119 +1,104 @@
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
-from launch.substitutions import (
-    LaunchConfiguration,
-    Command,
-    PathJoinSubstitution,
-)
+from launch.actions import DeclareLaunchArgument, OpaqueFunction
+from launch.substitutions import LaunchConfiguration, Command
 from launch_ros.actions import Node
-from launch_ros.substitutions import FindPackageShare
 from launch_ros.parameter_descriptions import ParameterValue
+
+from ament_index_python.packages import get_package_share_directory
+
 import os
+import re
+import shutil
 
 
-# HOW TO USE:
-#   Default data_dir:
-#       ~/ros2_ws/src/smm_data/synthesis/yaml
-#
-#   Override:
-#       ros2 launch smm_synthesis master_synthesis_launch.py \
-#         data_dir:=/home/nikos/custom_smm_data/synthesis/yaml
+def launch_setup(context, *args, **kwargs):
+    """
+    This runs at launch-time (OpaqueFunction), so we can:
+      1) Resolve data_dir and xacro_path
+      2) Infer DOF from xacro filename (…_3dof.xacro, …_6dof.xacro, etc.)
+      3) Copy the matching assembly template:
+             config/yaml/<Xdof>/assembly_<Xdof>.yaml
+      4) Instantiate all Ndof extractor nodes + RSP + RViz + JSP GUI.
+    """
 
+    # ---------- 1. Resolve package share & arguments ----------
+    pkg_share = get_package_share_directory("smm_synthesis")
 
-def generate_launch_description():
-    # 1. Base directory - where all synthesis yaml files are stored
-    default_data_dir = os.path.expanduser(
-        "~/ros2_ws/src/smm_class_pkgs/smm_data/synthesis/ndof/yaml/"
-    )
-    # 1.1. set arg to overwrite default dir in cli
-    data_dir_arg = DeclareLaunchArgument(
-        "data_dir",
-        default_value=default_data_dir,
-        description="Base directory where synthesis YAML files are written.",
-    )
+    data_dir = LaunchConfiguration("data_dir").perform(context)
+    xacro_path_arg = LaunchConfiguration("xacro_path").perform(context)
 
-    data_dir = LaunchConfiguration("data_dir")
+    # Ensure data_dir exists
+    if not os.path.isabs(data_dir):
+        data_dir = os.path.expanduser(data_dir)
+    os.makedirs(data_dir, exist_ok=True)
 
-    # 2. Set output file names (args, to overwite from cli)
-    frame_output_file_arg = DeclareLaunchArgument(
-        "frame_output_file",
-        default_value="gsai0.yaml",
-        description="filename for active joint frames (gsai0)"
-    )
-    com_output_file_arg = DeclareLaunchArgument(
-        "com_output_file",
-        default_value="gsli0.yaml",
-        description="filename for active CoM frames (gsli0)"
-    )
-    inertia_output_file_arg = DeclareLaunchArgument(
-        "inertia_output_file",
-        default_value="Mscomi0.yaml",
-        description="filename for spatial inertia tensor (Mscomi0)"
-    )
-    tcp_output_file_arg = DeclareLaunchArgument(
-        "tcp_output_file",
-        default_value="gst0.yaml",
-        description="filename for spatial tcp frame (gst0)"
-    )
-    act_twist_output_file_arg = DeclareLaunchArgument(
-        "act_twist_output_file",
-        default_value="xi_ai_anat.yaml",
-        description="filename for spatial active teists (xi_ai_s_anat)"
-    )
-    pas_frame_output_file_arg = DeclareLaunchArgument(
-        "pas_frame_output_file",
-        default_value="gspj0.yaml",
-        description="filename for passive joint frames (gspj0)"
-    )
-    pas_twist_output_file_arg = DeclareLaunchArgument(
-        "pas_twist_output_file",
-        default_value="xi_pj_anat.yaml",
-        description="filename for spatial active teists (xi_pj_s_anat)"
-    )
-    pseudo_angle_output_file_arg = DeclareLaunchArgument(
-        "pseudo_angle_output_file",
-        default_value="q_pj_anat.yaml",
-        description="filename for pseudo joint angles (q_pj_anat)"
-    )
+    # Resolve xacro absolute path
+    if os.path.isabs(xacro_path_arg):
+        xacro_file = xacro_path_arg
+    else:
+        # treat as path relative to smm_synthesis share
+        xacro_file = os.path.join(pkg_share, xacro_path_arg)
 
-    # 3. Turn the args in LaunchConfiguration objects
-    frame_output_file = LaunchConfiguration("frame_output_file")
-    com_output_file = LaunchConfiguration("com_output_file")
-    inertia_output_file = LaunchConfiguration("inertia_output_file")
-    tcp_output_file = LaunchConfiguration("tcp_output_file")
-    act_twist_output_file = LaunchConfiguration("act_twist_output_file")
-    pas_frame_output_file = LaunchConfiguration("pas_frame_output_file")
-    pas_twist_output_file = LaunchConfiguration("pas_twist_output_file")
-    pseudo_angle_output_file = LaunchConfiguration("pseudo_angle_output_file")
+    if not os.path.exists(xacro_file):
+        raise RuntimeError(f"[master_synthesis_ndof] xacro file not found: {xacro_file}")
 
-    # 4. Locate main robot xacro file: THIS CHANGES BASED ON ROBOT CONSTRUCTED
-    # - 4.1 AVAILABLE FOR SMM SUBCLASS (3DOF): smm_structure_anatomy_assembly.xacro
-    # - 4.2 NEXT CREATE SIMPLE TEST WITH CUBIC CONNECTORS
-    pkg_share = FindPackageShare("smm_synthesis").find("smm_synthesis")
-    xacro_file = os.path.join(
-        pkg_share,
-        "urdf",
-        "smm_structure_anatomy_assembly_6dof.xacro", 
+    # ---------- 2. Infer DOF from xacro filename ----------
+    # Expect something like "..._3dof.xacro", "..._6dof.xacro"
+    basename = os.path.basename(xacro_file)
+    m = re.search(r"([3-6])dof", basename)
+    if not m:
+        raise RuntimeError(
+            f"[master_synthesis_ndof] Cannot infer DOF from xacro filename '{basename}'. "
+            "Expected pattern like '*_3dof.xacro' or '*_6dof.xacro'."
+        )
+    dof = int(m.group(1))
+    dof_tag = f"{dof}dof"
+
+    # ---------- 3. Copy assembly template → live assembly.yaml ----------
+    # Template layout (as we agreed):
+    #   smm_synthesis/config/yaml/<Xdof>/assembly_<Xdof>.yaml
+    #     e.g. config/yaml/6dof/assembly_6dof.yaml
+    assembly_template = os.path.join(
+        pkg_share, "config", "yaml", dof_tag, f"assembly_{dof_tag}.yaml"
     )
+    if not os.path.exists(assembly_template):
+        raise RuntimeError(
+            f"[master_synthesis_ndof] Assembly template not found: {assembly_template}"
+        )
 
-    # 5. Assign the robot_description from xacro
+    live_assembly = os.path.join(data_dir, "assembly.yaml")
+    shutil.copyfile(assembly_template, live_assembly)
+
+    print(f"[master_synthesis_ndof] DOF={dof}, using template:")
+    print(f"  {assembly_template}  →  {live_assembly}")
+
+    # ---------- 4. Resolve output file names ----------
+    frame_output_file   = LaunchConfiguration("frame_output_file").perform(context)
+    com_output_file     = LaunchConfiguration("com_output_file").perform(context)
+    inertia_output_file = LaunchConfiguration("inertia_output_file").perform(context)
+    tcp_output_file     = LaunchConfiguration("tcp_output_file").perform(context)
+    act_twist_output    = LaunchConfiguration("act_twist_output_file").perform(context)
+    pas_frame_output    = LaunchConfiguration("pas_frame_output_file").perform(context)
+    pas_twist_output    = LaunchConfiguration("pas_twist_output_file").perform(context)
+    pseudo_angle_output = LaunchConfiguration("pseudo_angle_output_file").perform(context)
+
+    frame_yaml_path       = os.path.join(data_dir, frame_output_file)
+    com_yaml_path         = os.path.join(data_dir, com_output_file)
+    inertia_yaml_path     = os.path.join(data_dir, inertia_output_file)
+    tcp_yaml_path         = os.path.join(data_dir, tcp_output_file)
+    act_twist_yaml_path   = os.path.join(data_dir, act_twist_output)
+    pas_frame_yaml_path   = os.path.join(data_dir, pas_frame_output)
+    pas_twist_yaml_path   = os.path.join(data_dir, pas_twist_output)
+    pseudo_angle_yaml_path = os.path.join(data_dir, pseudo_angle_output)
+
+    # ---------- 5. robot_description from xacro ----------
     robot_description = ParameterValue(
-        Command(["xacro", " ", xacro_file]),
+        Command(["xacro", xacro_file]),
         value_type=str,
     )
 
-    # 6. Build full paths for the extractors’ outputs
-    frame_yaml_path = PathJoinSubstitution([data_dir, frame_output_file])
-    com_yaml_path   = PathJoinSubstitution([data_dir, com_output_file])
-    inertia_yaml_path   = PathJoinSubstitution([data_dir, inertia_output_file])
-    tcp_yaml_path   = PathJoinSubstitution([data_dir, tcp_output_file])
-    act_twist_yaml_path = PathJoinSubstitution([data_dir, act_twist_output_file])
-    pas_frame_yaml_path = PathJoinSubstitution([data_dir, pas_frame_output_file])    
-    pas_twist_yaml_path = PathJoinSubstitution([data_dir, pas_twist_output_file])
-    pseudo_angle_yaml_path = PathJoinSubstitution([data_dir, pseudo_angle_output_file])
-
-    # 7. Call node list
-    # 7.1 robot_state_publisher
+    # ---------- 6. Nodes (Ndof version) ----------
+    # 6.1 robot_state_publisher
     robot_state_publisher_node = Node(
         package="robot_state_publisher",
         executable="robot_state_publisher",
@@ -122,7 +107,7 @@ def generate_launch_description():
         parameters=[{"robot_description": robot_description}],
     )
 
-    # 7.2 joint_state_publisher_gui to move joints
+    # 6.2 joint_state_publisher_gui to move joints
     joint_state_publisher_node = Node(
         package="joint_state_publisher_gui",
         executable="joint_state_publisher_gui",
@@ -130,31 +115,32 @@ def generate_launch_description():
         output="screen",
     )
 
-    # 7.3 RViz2 for visualization
+    # 6.3 RViz2
     rviz_node = Node(
         package="rviz2",
         executable="rviz2",
         name="rviz2",
         output="screen",
-        #arguments=["-d", os.path.join(pkg_share, "config", "smm_synthesis_config.rviz")],
+        # You can plug a specific RViz config here if you want:
+        # arguments=["-d", os.path.join(pkg_share, "config", "smm_synthesis_ndof.rviz")],
     )
 
-    # 7.4 active_frames_extractor_ndof 
+    # 6.4 active_frames_extractor_ndof
     active_frames_extractor_ndof_node = Node(
         package="smm_synthesis",
         executable="active_frames_extractor_ndof",
         name="active_frames_extractor_ndof",
         output="screen",
         parameters=[
-            {"output_file": frame_yaml_path},          # FULL PATH
-            {"robot_description": robot_description},  # URDF as string
+            {"output_file": frame_yaml_path},
+            {"robot_description": robot_description},
             {"root_link": "base_link"},
             {"tip_link": "tcp"},
             {"apply_rotz_minus_pi": True},
         ],
     )
 
-    # 7.5 com_frames_extractor_ndof
+    # 6.5 com_extractor_kdl_ndof
     com_extractor_ndof_node = Node(
         package="smm_synthesis",
         executable="com_extractor_kdl_ndof",
@@ -168,7 +154,7 @@ def generate_launch_description():
         ],
     )
 
-    # 7.6 inertia_extractor_ndof
+    # 6.6 inertia_extractor_kdl_ndof
     inertia_extractor_ndof_node = Node(
         package="smm_synthesis",
         executable="inertia_extractor_kdl_ndof",
@@ -180,68 +166,71 @@ def generate_launch_description():
         ],
     )
 
-    # 7.7 tcp extractor saves the gst0.yaml
+    # 6.7 tcp_extractor_kdl_ndof → gst0.yaml
     tcp_extractor_ndof_node = Node(
         package="smm_synthesis",
         executable="tcp_extractor_kdl_ndof",
         name="tcp_extractor_kdl_ndof",
         output="screen",
         parameters=[
-            {"output_file": tcp_yaml_path},            # FULL PATH
-            {"robot_description": robot_description},  # same URDF string
+            {"output_file": tcp_yaml_path},
+            {"robot_description": robot_description},
             {"tip_link": "tcp"},
             {"base_link": "base_link"},
         ],
     )
 
-    # 7.8 active twists extractor saves the xi_ai_anat.yaml
+    # 6.8 active twists extractor (xi_ai_anat.yaml)
     act_twist_extractor_ndof_node = Node(
         package="smm_synthesis",
         executable="twist_extractor_screws_ndof",
         name="twist_extractor_screws_ndof",
         output="screen",
         parameters=[
-            {"input_file": frame_yaml_path},            # FULL PATH
-            {"output_file": act_twist_yaml_path},            # FULL PATH
+            {"input_file": frame_yaml_path},
+            {"output_file": act_twist_yaml_path},
         ],
     )
 
-    # 7.9 passive frame_extractor_kdl
+    # 6.9 passive frame extractor
     pas_frame_extractor_ndof_node = Node(
         package="smm_synthesis",
         executable="passive_frame_extractor_kdl_ndof",
         name="passive_frame_extractor_kdl_ndof",
         output="screen",
         parameters=[
-            {"output_file": pas_frame_yaml_path},          # FULL PATH
-            {"robot_description": robot_description},  # URDF as string
+            {"output_file": pas_frame_yaml_path},
+            {"robot_description": robot_description},
+            {"assembly_yaml": assembly_template},
         ],
     )
 
-    # 7.10 passive twists extractor saves the xi_pj_anat.yaml
+    # 6.10 passive twists extractor (xi_pj_anat.yaml)
     pas_twist_extractor_ndof_node = Node(
         package="smm_synthesis",
         executable="passive_twist_extractor_screws_ndof",
         name="passive_twist_extractor_screws_ndof",
         output="screen",
         parameters=[
-            {"input_file": pas_frame_yaml_path},            # FULL PATH
-            {"output_file": pas_twist_yaml_path},            # FULL PATH
+            {"input_file": pas_frame_yaml_path},      # live gspj0.yaml
+            {"output_file": pas_twist_yaml_path},     # live xi_pj_anat.yaml
+            {"assembly_yaml": assembly_template},     # DOF-specific TEMPLATE
         ],
     )
 
-    # 7.11 passive angle extractor saves the q_pj_anat.yaml
+    # 6.11 pseudo-angle extractor (q_pj_anat.yaml)
     pseudo_angle_extractor_ndof_node = Node(
         package="smm_synthesis",
         executable="pseudo_angle_extractor_ndof",
         name="pseudo_angle_extractor_ndof",
         output="screen",
         parameters=[
-            {"output_file": pseudo_angle_yaml_path},
+            {"output_file": pseudo_angle_yaml_path},  # live q_pj_anat.yaml
+            {"assembly_yaml": assembly_template},     # DOF-specific TEMPLATE        
         ],
     )
 
-    # 7.12 structure digit set spnning node to keep param alive in ros2
+    # 6.12 structure digit setter (keeps params alive)
     structure_digit_ndof_node = Node(
         package="smm_synthesis",
         executable="structure_digit_setter_ndof",
@@ -249,10 +238,94 @@ def generate_launch_description():
         output="screen",
     )
 
+    return [
+        robot_state_publisher_node,
+        joint_state_publisher_node,
+        rviz_node,
+        active_frames_extractor_ndof_node,
+        com_extractor_ndof_node,
+        inertia_extractor_ndof_node,
+        tcp_extractor_ndof_node,
+        act_twist_extractor_ndof_node,
+        pas_frame_extractor_ndof_node,
+        pas_twist_extractor_ndof_node,
+        pseudo_angle_extractor_ndof_node,
+        structure_digit_ndof_node,
+    ]
+
+
+def generate_launch_description():
+    # 1. Base directory - live synthesis YAML folder
+    default_data_dir = os.path.expanduser(
+        "~/ros2_ws/src/smm_class_pkgs/smm_data/synthesis/yaml/"
+    )
+
+    data_dir_arg = DeclareLaunchArgument(
+        "data_dir",
+        default_value=default_data_dir,
+        description="Base directory where synthesis YAML files are written (live folder).",
+    )
+
+    # 2. Xacro path (can be absolute or relative to smm_synthesis share)
+    #    Default: 6DOF structure; you can override from CLI.
+    xacro_path_arg = DeclareLaunchArgument(
+        "xacro_path",
+        default_value="urdf/smm_structure_anatomy_assembly_6dof.xacro",
+        description=(
+            "Absolute or package-relative path to the SMM structure xacro. "
+            "DOF is inferred from the filename pattern '*_Xdof.xacro'."
+        ),
+    )
+
+    # 3. Output filenames (within data_dir)
+    frame_output_file_arg = DeclareLaunchArgument(
+        "frame_output_file",
+        default_value="gsai0.yaml",
+        description="Filename for active joint frames (gsai0)",
+    )
+    com_output_file_arg = DeclareLaunchArgument(
+        "com_output_file",
+        default_value="gsli0.yaml",
+        description="Filename for active CoM frames (gsli0)",
+    )
+    inertia_output_file_arg = DeclareLaunchArgument(
+        "inertia_output_file",
+        default_value="Mscomi0.yaml",
+        description="Filename for spatial inertia tensor (Mscomi0)",
+    )
+    tcp_output_file_arg = DeclareLaunchArgument(
+        "tcp_output_file",
+        default_value="gst0.yaml",
+        description="Filename for spatial TCP frame (gst0)",
+    )
+    act_twist_output_file_arg = DeclareLaunchArgument(
+        "act_twist_output_file",
+        default_value="xi_ai_anat.yaml",
+        description="Filename for spatial active twists (xi_ai_anat)",
+    )
+    pas_frame_output_file_arg = DeclareLaunchArgument(
+        "pas_frame_output_file",
+        default_value="gspj0.yaml",
+        description="Filename for passive joint frames (gspj0)",
+    )
+    pas_twist_output_file_arg = DeclareLaunchArgument(
+        "pas_twist_output_file",
+        default_value="xi_pj_anat.yaml",
+        description="Filename for spatial passive twists (xi_pj_anat)",
+    )
+    pseudo_angle_output_file_arg = DeclareLaunchArgument(
+        "pseudo_angle_output_file",
+        default_value="q_pj_anat.yaml",
+        description="Filename for pseudo joint angles (q_pj_anat)",
+    )
+
+    # 4. OpaqueFunction to do filesystem + node creation
+    opaque = OpaqueFunction(function=launch_setup)
+
     return LaunchDescription(
         [
-            # launch args
             data_dir_arg,
+            xacro_path_arg,
             frame_output_file_arg,
             com_output_file_arg,
             inertia_output_file_arg,
@@ -261,20 +334,6 @@ def generate_launch_description():
             pas_frame_output_file_arg,
             pas_twist_output_file_arg,
             pseudo_angle_output_file_arg,
-
-            # nodes
-            robot_state_publisher_node,
-            joint_state_publisher_node,
-            rviz_node,
-            active_frames_extractor_ndof_node,
-            com_extractor_ndof_node,
-            inertia_extractor_ndof_node,
-            tcp_extractor_ndof_node,
-            act_twist_extractor_ndof_node,
-            pas_frame_extractor_ndof_node,
-            pas_twist_extractor_ndof_node,
-            pseudo_angle_extractor_ndof_node,
-            structure_digit_ndof_node,
-
+            opaque,
         ]
     )

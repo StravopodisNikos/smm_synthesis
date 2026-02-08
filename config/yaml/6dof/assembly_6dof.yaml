@@ -45,6 +45,6 @@ pseudo1_angle:   0.0000
 pseudo2_angle:   0.0000
 pseudo3_angle:   0.0000
 pseudo4_angle:   0.0000
-pseudo5_angle:   0.0000 # [6dof only]
-pseudo6_angle:   0.0000 # [6dof only]
+pseudo5_angle:   0.0000 
+pseudo6_angle:   0.0000 
 
