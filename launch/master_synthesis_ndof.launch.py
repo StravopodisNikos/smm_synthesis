@@ -10,6 +10,10 @@ import os
 import re
 import shutil
 
+# How to test the 6-dof visualization:
+# $ ros2 launch smm_synthesis master_synthesis_ndof.launch.py \
+#  data_dir:=/home/nikos/ros2_ws/src/smm_class_pkgs/smm_data/synthesis/yaml \
+#  xacro_path:=urdf/smm_structure_anatomy_assembly_6dof.xacro
 
 def launch_setup(context, *args, **kwargs):
     """
@@ -55,16 +59,29 @@ def launch_setup(context, *args, **kwargs):
     dof_tag = f"{dof}dof"
 
     # ---------- 3. Copy assembly template → live assembly.yaml ----------
-    # Template layout (as we agreed):
-    #   smm_synthesis/config/yaml/<Xdof>/assembly_<Xdof>.yaml
-    #     e.g. config/yaml/6dof/assembly_6dof.yaml
+    # Try installed location first:
+    #   <install>/share/smm_synthesis/config/yaml/<Xdof>/assembly_<Xdof>.yaml
     assembly_template = os.path.join(
         pkg_share, "config", "yaml", dof_tag, f"assembly_{dof_tag}.yaml"
     )
+
     if not os.path.exists(assembly_template):
-        raise RuntimeError(
-            f"[master_synthesis_ndof] Assembly template not found: {assembly_template}"
+        # Fallback: use the *source* layout relative to the xacro file.
+        # xacro_file = .../smm_synthesis/urdf/6dof/smm_structure_anatomy_assembly_6dof.xacro
+        # pkg_root   = .../smm_synthesis
+        pkg_root = os.path.dirname(os.path.dirname(os.path.dirname(xacro_file)))
+        alt_template = os.path.join(
+            pkg_root, "config", "yaml", dof_tag, f"assembly_{dof_tag}.yaml"
         )
+
+        if os.path.exists(alt_template):
+            assembly_template = alt_template
+        else:
+            raise RuntimeError(
+                "[master_synthesis_ndof] Assembly template not found in either:\n"
+                f"  {os.path.join(pkg_share, 'config', 'yaml', dof_tag, f'assembly_{dof_tag}.yaml')}\n"
+                f"  {alt_template}"
+            )
 
     live_assembly = os.path.join(data_dir, "assembly.yaml")
     shutil.copyfile(assembly_template, live_assembly)
@@ -93,7 +110,7 @@ def launch_setup(context, *args, **kwargs):
 
     # ---------- 5. robot_description from xacro ----------
     robot_description = ParameterValue(
-        Command(["xacro", xacro_file]),
+        Command(["xacro", " ", xacro_file]),
         value_type=str,
     )
 
@@ -134,7 +151,7 @@ def launch_setup(context, *args, **kwargs):
         parameters=[
             {"output_file": frame_yaml_path},
             {"robot_description": robot_description},
-            {"root_link": "base_link"},
+            {"root_link": "base_plate"},
             {"tip_link": "tcp"},
             {"apply_rotz_minus_pi": True},
         ],
@@ -150,7 +167,7 @@ def launch_setup(context, *args, **kwargs):
             {"output_file": com_yaml_path},
             {"robot_description": robot_description},
             {"tip_link": "tcp"},
-            {"base_link_name": "base_link"},
+            {"root_link_name": "base_plate"},
         ],
     )
 
@@ -176,7 +193,7 @@ def launch_setup(context, *args, **kwargs):
             {"output_file": tcp_yaml_path},
             {"robot_description": robot_description},
             {"tip_link": "tcp"},
-            {"base_link": "base_link"},
+            {"root_link": "base_plate"},
         ],
     )
 
@@ -270,7 +287,7 @@ def generate_launch_description():
     #    Default: 6DOF structure; you can override from CLI.
     xacro_path_arg = DeclareLaunchArgument(
         "xacro_path",
-        default_value="urdf/smm_structure_anatomy_assembly_6dof.xacro",
+        default_value="urdf/6dof/smm_structure_anatomy_assembly_6dof.xacro",
         description=(
             "Absolute or package-relative path to the SMM structure xacro. "
             "DOF is inferred from the filename pattern '*_Xdof.xacro'."

@@ -166,7 +166,6 @@ int main(int argc, char** argv)
                 "Detected %d-DOF active chain.", active_count);
   }
 
-
   // Write YAML (16 values per frame, row-major)
   YAML::Emitter out;
   out << YAML::BeginMap;

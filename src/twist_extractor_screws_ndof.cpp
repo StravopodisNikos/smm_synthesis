@@ -10,15 +10,7 @@
 #include <yaml-cpp/yaml.h>
 
 #include "rclcpp/rclcpp.hpp"
-
-// Your screw-theory core
-#include "smm_screws/core/ScrewsMain.h"
-
-// HOW TO USE (example):
-// ros2 run smm_synthesis twist_extractor_screws_ndof \
-//   --ros-args \
-//     -p input_file:=/home/nikos/ros2_ws/src/smm_class_pkgs/smm_data/synthesis/ndof/yaml/gsai0.yaml \
-//     -p output_file:=/home/nikos/ros2_ws/src/smm_class_pkgs/smm_data/synthesis/ndof/yaml/xi_ai_anat.yaml
+#include "smm_screws/core/ScrewsMain.h"   // or ScrewsKinematics if you prefer
 
 int main(int argc, char ** argv)
 {
@@ -62,9 +54,8 @@ int main(int argc, char ** argv)
     return 1;
   }
 
-  // --- Collect all 'gsa*' frame keys (gsa00, gsa10, gsa20, gsa30, ...) ---
+  // --- Collect all 'gsa*' frame keys (gsa00, gsa10, gsa20, ...) ---
   std::vector<std::string> gsa_keys;
-
   for (auto it = root.begin(); it != root.end(); ++it) {
     const std::string key = it->first.as<std::string>();
     if (key.rfind("gsa", 0) == 0) {  // starts with "gsa"
@@ -82,24 +73,20 @@ int main(int argc, char ** argv)
 
   std::sort(gsa_keys.begin(), gsa_keys.end());
 
-  const int dof = static_cast<int>(gsa_keys.size()) - 1;  // gsa00 + one per joint
+  const int dof = static_cast<int>(gsa_keys.size());  // <-- NO '-1' HERE
 
   if (dof < 3 || dof > 6) {
     RCLCPP_WARN(
       node->get_logger(),
-      "Found %zu 'gsa*' frames → %d joints (size-1). Expected 3..6 joints for SMM. Proceeding anyway.",
+      "Found %zu 'gsa*' frames → %d joints. Expected 3..6. Proceeding anyway.",
       gsa_keys.size(), dof);
   }
 
-  // --- Screw kinematics core ---
   ScrewsMain screws;
-
-  // Store twists
   std::map<std::string, Eigen::Matrix<float, 6, 1>> twists;
 
-  // --- For each joint (NOT all gsa frames) build a twist ---
-  for (int joint_idx = 0; joint_idx < dof; ++joint_idx) {
-    const std::string & frame_name = gsa_keys[static_cast<std::size_t>(joint_idx)];
+  for (int i = 0; i < dof; ++i) {
+    const std::string & frame_name = gsa_keys[static_cast<std::size_t>(i)];
 
     if (!root[frame_name]) {
       RCLCPP_WARN(
@@ -118,42 +105,49 @@ int main(int argc, char ** argv)
       continue;
     }
 
-    // 1) Parse 4x4 T
+    // --- Parse 4x4 transform ---
     Eigen::Matrix4d T = Eigen::Matrix4d::Identity();
-    for (int i = 0; i < 16; ++i) {
-      T(i / 4, i % 4) = values[i].as<double>();
+    for (int k = 0; k < 16; ++k) {
+      T(k / 4, k % 4) = values[k].as<double>();
     }
 
-    // 2) q = translation
     Eigen::Vector3d q_d = T.block<3,1>(0, 3);
-
-    // 3) omega = axis direction (space frame) – same rules as before
     Eigen::Vector3d omega_d;
-    if (joint_idx == 0) {
-      // joint 1 (base) → Z
+
+    // Exact axis selection based on known joint types / frame names
+    if (frame_name == "gsa00") {
+      // Base stepper joint: axis = local Z
       omega_d = T.block<3,1>(0, 2);
-    } else if (joint_idx == 1 || joint_idx == 2) {
-      // joints 2 & 3 → X
+    } else if (frame_name == "gsa10" || frame_name == "gsa20") {
+      // First two DXL joints: axis = local X
       omega_d = T.block<3,1>(0, 0);
-    } else {
-      // wrist joints (joint_idx >= 3) → Y
+    } else if (frame_name == "gsa30" || frame_name == "gsa40" || frame_name == "gsa50") {
+      // Wrist joints: axis = local Y
       omega_d = T.block<3,1>(0, 1);
+    } else {
+      // Unknown naming: you can add more patterns if needed
+      RCLCPP_WARN(
+        node->get_logger(),
+        "Frame '%s': unknown joint axis pattern. Skipping.",
+        frame_name.c_str());
+      continue;
     }
 
-    // 4) Cast to float and build twist
     Eigen::Vector3f q     = q_d.cast<float>();
     Eigen::Vector3f omega = omega_d.cast<float>();
 
-    Eigen::Matrix<float, 6, 1> twist = kin.createTwist(omega, q);
+    Eigen::Matrix<float, 6, 1> twist = screws.createTwist(omega, q);
 
-    // Twist key: xi_a<joint_idx>_0
+    // Derive joint index from frame name: "gsaXY" → X is joint index
+    // With names gsa00, gsa10, gsa20, ... this yields 0,1,2,3,4,5
+    int joint_idx = frame_name[3] - '0';
+
     std::string twist_key = "xi_a" + std::to_string(joint_idx) + "_0";
     twists[twist_key] = twist;
 
     std::cout << "\nFrame: " << frame_name << " → " << twist_key;
     std::cout << "\nTwist: " << twist.transpose() << "\n";
   }
-
 
   // --- Save twists to YAML ---
   YAML::Emitter out;

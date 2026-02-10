@@ -556,6 +556,53 @@
 	</link>
 </xacro:macro>
 
+<!-- MASSAGE-TOOL-STL + TCP FRAME (3DOF VERSION) -->
+<xacro:macro name="massage_tool_stl_3dof"
+             params="name tcp_frame_name tcp_xyz:='0 0 0.045' tcp_rpy:='0 0 0'">
+
+  <!-- Physical tool link: same geometry / inertia as massage_tool_stl -->
+  <link name="${name}">
+    <inertial>
+      <!-- from massage_tool_stl -->
+      <origin rpy="0 0 0" xyz="0 0 0.0378"/>
+      <mass value ="0.211" />
+      <inertia ixx="6.414e-005" ixy="0" ixz="0"
+               iyy="6.414e-005" iyz="0" izz="4.986e-005"/>
+    </inertial>
+
+    <visual>
+      <!-- from massage_tool_stl -->
+      <origin rpy="0 0 0" xyz="0 0 0.020"/>
+      <geometry>
+        <mesh filename="package://smm_synthesis/meshes/massage_tool.stl"
+              scale="0.001 0.001 0.001"/>
+      </geometry>
+      <material name="Porcelain">
+        <color rgba="0.9254 0.9412 0.9413 1"/>
+      </material>
+    </visual>
+
+    <collision>
+      <!-- from massage_tool_stl -->
+      <origin rpy="0 0 0" xyz="0 0 0.040" />
+      <geometry>
+        <sphere radius="0.025"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- TCP frame: massless, collisionless -->
+  <link name="${tcp_frame_name}"/>
+
+  <!-- Fixed joint defining TCP pose relative to the tool link -->
+  <joint name="${name}__tcp" type="fixed">
+    <parent link="${name}"/>
+    <child link="${tcp_frame_name}"/>
+    <origin xyz="${tcp_xyz}" rpy="${tcp_rpy}"/>
+  </joint>
+
+</xacro:macro>
+
 <!-- MASSAGE-TOOL-STL CIRC ASSEMBLY - 6DOF ONLY [ASSEMBLED AFTER WRIST] -->
 <xacro:macro name="massage_tool_stl_6dof" params="name">
 	<link name="${name}">

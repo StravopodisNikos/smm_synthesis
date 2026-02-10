@@ -449,7 +449,18 @@
 		<parent link="force_sensor"/>
 		<child link="${massage_tool_stl}"/>
 	</joint>
-	<xacro:massage_tool_stl name="${massage_tool_stl}" /> 
+  <!-- [10-2-2026] Replaced old macro for massage tool frame with a new (6dof based)-->
+	<!-- <xacro:massage_tool_stl name="${massage_tool_stl}" /> 
+  <gazebo reference="${massage_tool_stl}">
+    <material>Gazebo/Orange</material>
+  </gazebo> -->
+    <!-- New macro: tool + tcp -->
+  <xacro:massage_tool_stl_3dof
+    name="${massage_tool_stl}"
+    tcp_frame_name="tcp"
+    tcp_xyz="0 0 0.045"
+    tcp_rpy="0 0 0"/>
+
   <gazebo reference="${massage_tool_stl}">
     <material>Gazebo/Orange</material>
   </gazebo>
