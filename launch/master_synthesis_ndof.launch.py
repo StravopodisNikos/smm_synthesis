@@ -1,8 +1,14 @@
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, OpaqueFunction
+from launch.actions import (
+    DeclareLaunchArgument,
+    OpaqueFunction,
+    RegisterEventHandler,
+)
 from launch.substitutions import LaunchConfiguration, Command
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
+
+from launch.event_handlers import OnProcessExit
 
 from ament_index_python.packages import get_package_share_directory
 
@@ -10,20 +16,18 @@ import os
 import re
 import shutil
 
+
 # How to test the 6-dof visualization:
 # $ ros2 launch smm_synthesis master_synthesis_ndof.launch.py \
-#  data_dir:=/home/nikos/ros2_ws/src/smm_class_pkgs/smm_data/synthesis/yaml \
-#  xacro_path:=urdf/smm_structure_anatomy_assembly_6dof.xacro
+#   data_dir:=/home/nikos/ros2_ws/src/smm_class_pkgs/smm_data/synthesis/yaml \
+#   xacro_path:=/home/nikos/ros2_ws/src/smm_class_pkgs/smm_synthesis/urdf/6dof/smm_structure_anatomy_assembly_6dof.xacro
+# How to test the 3-dof visualization:
+# $ ros2 launch smm_synthesis master_synthesis_ndof.launch.py \
+#   data_dir:=/home/nikos/ros2_ws/src/smm_class_pkgs/smm_data/synthesis/yaml \
+#   xacro_path:=/home/nikos/ros2_ws/src/smm_class_pkgs/smm_synthesis/urdf/3dof/smm_structure_anatomy_assembly_3dof.xacro
+
 
 def launch_setup(context, *args, **kwargs):
-    """
-    This runs at launch-time (OpaqueFunction), so we can:
-      1) Resolve data_dir and xacro_path
-      2) Infer DOF from xacro filename (…_3dof.xacro, …_6dof.xacro, etc.)
-      3) Copy the matching assembly template:
-             config/yaml/<Xdof>/assembly_<Xdof>.yaml
-      4) Instantiate all Ndof extractor nodes + RSP + RViz + JSP GUI.
-    """
 
     # ---------- 1. Resolve package share & arguments ----------
     pkg_share = get_package_share_directory("smm_synthesis")
@@ -99,13 +103,13 @@ def launch_setup(context, *args, **kwargs):
     pas_twist_output    = LaunchConfiguration("pas_twist_output_file").perform(context)
     pseudo_angle_output = LaunchConfiguration("pseudo_angle_output_file").perform(context)
 
-    frame_yaml_path       = os.path.join(data_dir, frame_output_file)
-    com_yaml_path         = os.path.join(data_dir, com_output_file)
-    inertia_yaml_path     = os.path.join(data_dir, inertia_output_file)
-    tcp_yaml_path         = os.path.join(data_dir, tcp_output_file)
-    act_twist_yaml_path   = os.path.join(data_dir, act_twist_output)
-    pas_frame_yaml_path   = os.path.join(data_dir, pas_frame_output)
-    pas_twist_yaml_path   = os.path.join(data_dir, pas_twist_output)
+    frame_yaml_path        = os.path.join(data_dir, frame_output_file)
+    com_yaml_path          = os.path.join(data_dir, com_output_file)
+    inertia_yaml_path      = os.path.join(data_dir, inertia_output_file)
+    tcp_yaml_path          = os.path.join(data_dir, tcp_output_file)
+    act_twist_yaml_path    = os.path.join(data_dir, act_twist_output)
+    pas_frame_yaml_path    = os.path.join(data_dir, pas_frame_output)
+    pas_twist_yaml_path    = os.path.join(data_dir, pas_twist_output)
     pseudo_angle_yaml_path = os.path.join(data_dir, pseudo_angle_output)
 
     # ---------- 5. robot_description from xacro ----------
@@ -138,11 +142,10 @@ def launch_setup(context, *args, **kwargs):
         executable="rviz2",
         name="rviz2",
         output="screen",
-        # You can plug a specific RViz config here if you want:
         # arguments=["-d", os.path.join(pkg_share, "config", "smm_synthesis_ndof.rviz")],
     )
 
-    # 6.4 active_frames_extractor_ndof
+    # 6.4 active_frames_extractor_ndof → gsai0.yaml
     active_frames_extractor_ndof_node = Node(
         package="smm_synthesis",
         executable="active_frames_extractor_ndof",
@@ -157,7 +160,7 @@ def launch_setup(context, *args, **kwargs):
         ],
     )
 
-    # 6.5 com_extractor_kdl_ndof
+    # 6.5 com_extractor_kdl_ndof → gsli0.yaml
     com_extractor_ndof_node = Node(
         package="smm_synthesis",
         executable="com_extractor_kdl_ndof",
@@ -171,7 +174,7 @@ def launch_setup(context, *args, **kwargs):
         ],
     )
 
-    # 6.6 inertia_extractor_kdl_ndof
+    # 6.6 inertia_extractor_kdl_ndof → Mscomi0.yaml
     inertia_extractor_ndof_node = Node(
         package="smm_synthesis",
         executable="inertia_extractor_kdl_ndof",
@@ -197,41 +200,41 @@ def launch_setup(context, *args, **kwargs):
         ],
     )
 
-    # 6.8 active twists extractor (xi_ai_anat.yaml)
+    # 6.8 active twists extractor (xi_ai_anat.yaml), needs gsai0.yaml
     act_twist_extractor_ndof_node = Node(
         package="smm_synthesis",
         executable="twist_extractor_screws_ndof",
         name="twist_extractor_screws_ndof",
         output="screen",
         parameters=[
-            {"input_file": frame_yaml_path},
+            {"input_file": frame_yaml_path},     # gsai0.yaml
             {"output_file": act_twist_yaml_path},
         ],
     )
 
-    # 6.9 passive frame extractor
+    # 6.9 passive frame extractor → gspj0.yaml
     pas_frame_extractor_ndof_node = Node(
         package="smm_synthesis",
         executable="passive_frame_extractor_kdl_ndof",
         name="passive_frame_extractor_kdl_ndof",
         output="screen",
         parameters=[
-            {"output_file": pas_frame_yaml_path},
+            {"output_file": pas_frame_yaml_path},   # gspj0.yaml
             {"robot_description": robot_description},
-            {"assembly_yaml": assembly_template},
+            {"assembly_yaml": assembly_template},   # DOF-specific TEMPLATE
         ],
     )
 
-    # 6.10 passive twists extractor (xi_pj_anat.yaml)
+    # 6.10 passive twists extractor (xi_pj_anat.yaml), needs gspj0.yaml
     pas_twist_extractor_ndof_node = Node(
         package="smm_synthesis",
         executable="passive_twist_extractor_screws_ndof",
         name="passive_twist_extractor_screws_ndof",
         output="screen",
         parameters=[
-            {"input_file": pas_frame_yaml_path},      # live gspj0.yaml
-            {"output_file": pas_twist_yaml_path},     # live xi_pj_anat.yaml
-            {"assembly_yaml": assembly_template},     # DOF-specific TEMPLATE
+            {"input_file": pas_frame_yaml_path},    # live gspj0.yaml
+            {"output_file": pas_twist_yaml_path},   # live xi_pj_anat.yaml
+            {"assembly_yaml": assembly_template},   # DOF-specific TEMPLATE
         ],
     )
 
@@ -243,7 +246,7 @@ def launch_setup(context, *args, **kwargs):
         output="screen",
         parameters=[
             {"output_file": pseudo_angle_yaml_path},  # live q_pj_anat.yaml
-            {"assembly_yaml": assembly_template},     # DOF-specific TEMPLATE        
+            {"assembly_yaml": assembly_template},     # DOF-specific TEMPLATE
         ],
     )
 
@@ -255,6 +258,27 @@ def launch_setup(context, *args, **kwargs):
         output="screen",
     )
 
+    # ---------- 7. Chaining: twists AFTER frames ----------
+    # Active twists after active frames
+    chain_active_twists = RegisterEventHandler(
+        OnProcessExit(
+            target_action=active_frames_extractor_ndof_node,
+            on_exit=[act_twist_extractor_ndof_node],
+        )
+    )
+
+    # Passive twists after passive frames
+    chain_passive_twists = RegisterEventHandler(
+        OnProcessExit(
+            target_action=pas_frame_extractor_ndof_node,
+            on_exit=[pas_twist_extractor_ndof_node],
+        )
+    )
+
+    # IMPORTANT: we do NOT return act_twist_extractor_ndof_node and
+    # pas_twist_extractor_ndof_node directly here, they are launched
+    # only through the event handlers above.
+
     return [
         robot_state_publisher_node,
         joint_state_publisher_node,
@@ -263,11 +287,11 @@ def launch_setup(context, *args, **kwargs):
         com_extractor_ndof_node,
         inertia_extractor_ndof_node,
         tcp_extractor_ndof_node,
-        act_twist_extractor_ndof_node,
         pas_frame_extractor_ndof_node,
-        pas_twist_extractor_ndof_node,
         pseudo_angle_extractor_ndof_node,
         structure_digit_ndof_node,
+        chain_active_twists,
+        chain_passive_twists,
     ]
 
 
@@ -284,7 +308,6 @@ def generate_launch_description():
     )
 
     # 2. Xacro path (can be absolute or relative to smm_synthesis share)
-    #    Default: 6DOF structure; you can override from CLI.
     xacro_path_arg = DeclareLaunchArgument(
         "xacro_path",
         default_value="urdf/6dof/smm_structure_anatomy_assembly_6dof.xacro",
@@ -336,7 +359,6 @@ def generate_launch_description():
         description="Filename for pseudo joint angles (q_pj_anat)",
     )
 
-    # 4. OpaqueFunction to do filesystem + node creation
     opaque = OpaqueFunction(function=launch_setup)
 
     return LaunchDescription(
