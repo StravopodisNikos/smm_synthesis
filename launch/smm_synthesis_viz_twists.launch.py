@@ -7,6 +7,8 @@ from ament_index_python.packages import get_package_share_directory
 
 import os
 
+# How to run:
+# ros2 launch smm_synthesis master_synthesis_viz_twists.launch.py
 
 def generate_launch_description():
     # Where smm_synthesis’s installed stuff lives
@@ -38,7 +40,7 @@ def generate_launch_description():
     )
 
     # --- 3. Add the twists visualization node from smm_viz_tools ---
-    # We reuse *the same* data_dir as yaml_base_dir, so it matches your synthesis outputs.
+    # We reuse *the same* data_dir as yaml_base_dir, so it matches synthesis outputs.
     twists_viz_node = Node(
         package="smm_viz_tools",
         executable="smm_twists2_viz_node",

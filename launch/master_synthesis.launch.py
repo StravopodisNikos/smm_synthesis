@@ -13,7 +13,7 @@ import os
 
 # HOW TO USE:
 #   Default data_dir:
-#       ~/ros2_ws/src/smm_data/synthesis/yaml
+#       ~/ros2_ws/src/smm_class_pkgs/smm_data/synthesis/yaml
 #
 #   Override:
 #       ros2 launch smm_synthesis master_synthesis_launch.py \
@@ -25,7 +25,7 @@ def generate_launch_description():
     default_data_dir = os.path.expanduser(
         "~/ros2_ws/src/smm_class_pkgs/smm_data/synthesis/yaml/"
     )
-    # 1.1. set arg to overwrite default dir in cli
+
     data_dir_arg = DeclareLaunchArgument(
         "data_dir",
         default_value=default_data_dir,
@@ -34,7 +34,7 @@ def generate_launch_description():
 
     data_dir = LaunchConfiguration("data_dir")
 
-    # 2. Set output file names (args, to overwite from cli)
+    # 2. Set output file names (args, to overwrite from cli)
     frame_output_file_arg = DeclareLaunchArgument(
         "frame_output_file",
         default_value="gsai0.yaml",
@@ -58,7 +58,7 @@ def generate_launch_description():
     act_twist_output_file_arg = DeclareLaunchArgument(
         "act_twist_output_file",
         default_value="xi_ai_anat.yaml",
-        description="filename for spatial active teists (xi_ai_s_anat)"
+        description="filename for spatial active twists (xi_ai_anat)"
     )
     pas_frame_output_file_arg = DeclareLaunchArgument(
         "pas_frame_output_file",
@@ -68,7 +68,7 @@ def generate_launch_description():
     pas_twist_output_file_arg = DeclareLaunchArgument(
         "pas_twist_output_file",
         default_value="xi_pj_anat.yaml",
-        description="filename for spatial active teists (xi_pj_s_anat)"
+        description="filename for spatial passive twists (xi_pj_anat)"
     )
     pseudo_angle_output_file_arg = DeclareLaunchArgument(
         "pseudo_angle_output_file",
@@ -76,24 +76,24 @@ def generate_launch_description():
         description="filename for pseudo joint angles (q_pj_anat)"
     )
 
-    # 3. Turn the args in LaunchConfiguration objects
-    frame_output_file = LaunchConfiguration("frame_output_file")
-    com_output_file = LaunchConfiguration("com_output_file")
-    inertia_output_file = LaunchConfiguration("inertia_output_file")
-    tcp_output_file = LaunchConfiguration("tcp_output_file")
-    act_twist_output_file = LaunchConfiguration("act_twist_output_file")
-    pas_frame_output_file = LaunchConfiguration("pas_frame_output_file")
-    pas_twist_output_file = LaunchConfiguration("pas_twist_output_file")
+    # 3. Turn the args into LaunchConfiguration objects
+    frame_output_file      = LaunchConfiguration("frame_output_file")
+    com_output_file        = LaunchConfiguration("com_output_file")
+    inertia_output_file    = LaunchConfiguration("inertia_output_file")
+    tcp_output_file        = LaunchConfiguration("tcp_output_file")
+    act_twist_output_file  = LaunchConfiguration("act_twist_output_file")
+    pas_frame_output_file  = LaunchConfiguration("pas_frame_output_file")
+    pas_twist_output_file  = LaunchConfiguration("pas_twist_output_file")
     pseudo_angle_output_file = LaunchConfiguration("pseudo_angle_output_file")
 
-    # 4. Locate main robot xacro file: THIS CHANGES BASED ON ROBOT CONSTRUCTED
-    # - 4.1 AVAILABLE FOR SMM SUBCLASS (3DOF): smm_structure_anatomy_assembly.xacro
-    # - 4.2 NEXT CREATE SIMPLE TEST WITH CUBIC CONNECTORS
+    # 4. Locate main robot xacro file: 3-DOF hardcoded model
+    # NEW PATH: urdf/3dof/smm_structure_anatomy_assembly_3dof.xacro
     pkg_share = FindPackageShare("smm_synthesis").find("smm_synthesis")
     xacro_file = os.path.join(
         pkg_share,
         "urdf",
-        "smm_structure_anatomy_assembly.xacro", 
+        "3dof",
+        "smm_structure_anatomy_assembly_3dof.xacro",
     )
 
     # 5. Assign the robot_description from xacro
@@ -103,16 +103,16 @@ def generate_launch_description():
     )
 
     # 6. Build full paths for the extractors’ outputs
-    frame_yaml_path = PathJoinSubstitution([data_dir, frame_output_file])
-    com_yaml_path   = PathJoinSubstitution([data_dir, com_output_file])
-    inertia_yaml_path   = PathJoinSubstitution([data_dir, inertia_output_file])
-    tcp_yaml_path   = PathJoinSubstitution([data_dir, tcp_output_file])
-    act_twist_yaml_path = PathJoinSubstitution([data_dir, act_twist_output_file])
-    pas_frame_yaml_path = PathJoinSubstitution([data_dir, pas_frame_output_file])    
-    pas_twist_yaml_path = PathJoinSubstitution([data_dir, pas_twist_output_file])
+    frame_yaml_path       = PathJoinSubstitution([data_dir, frame_output_file])
+    com_yaml_path         = PathJoinSubstitution([data_dir, com_output_file])
+    inertia_yaml_path     = PathJoinSubstitution([data_dir, inertia_output_file])
+    tcp_yaml_path         = PathJoinSubstitution([data_dir, tcp_output_file])
+    act_twist_yaml_path   = PathJoinSubstitution([data_dir, act_twist_output_file])
+    pas_frame_yaml_path   = PathJoinSubstitution([data_dir, pas_frame_output_file])
+    pas_twist_yaml_path   = PathJoinSubstitution([data_dir, pas_twist_output_file])
     pseudo_angle_yaml_path = PathJoinSubstitution([data_dir, pseudo_angle_output_file])
 
-    # 7. Call node list
+    # 7. Nodes
     # 7.1 robot_state_publisher
     robot_state_publisher_node = Node(
         package="robot_state_publisher",
@@ -136,18 +136,18 @@ def generate_launch_description():
         executable="rviz2",
         name="rviz2",
         output="screen",
-        #arguments=["-d", os.path.join(pkg_share, "config", "smm_synthesis_config.rviz")],
+        # arguments=["-d", os.path.join(pkg_share, "config", "smm_synthesis_config.rviz")],
     )
 
-    # 7.4 frame_extractor_kdl – SAME logic as your working extract_frames.launch.py
+    # 7.4 frame_extractor_kdl
     frame_extractor_node = Node(
         package="smm_synthesis",
         executable="frame_extractor_kdl",
         name="frame_extractor_kdl",
         output="screen",
         parameters=[
-            {"output_file": frame_yaml_path},          # FULL PATH
-            {"robot_description": robot_description},  # URDF as string
+            {"output_file": frame_yaml_path},
+            {"robot_description": robot_description},
         ],
     )
 
@@ -158,72 +158,72 @@ def generate_launch_description():
         name="com_extractor_kdl",
         output="screen",
         parameters=[
-            {"output_file": com_yaml_path},            # FULL PATH
-            {"robot_description": robot_description},  # same URDF string
+            {"output_file": com_yaml_path},
+            {"robot_description": robot_description},
         ],
     )
 
-    # 7.6 inertia extractor saves the Mscomi0.yaml
+    # 7.6 inertia_extractor_kdl – writes Mscomi0.yaml
     inertia_extractor_node = Node(
         package="smm_synthesis",
         executable="inertia_extractor_kdl",
         name="inertia_extractor_kdl",
         output="screen",
         parameters=[
-            {"output_file": inertia_yaml_path},            # FULL PATH
-            {"robot_description": robot_description},  # same URDF string
+            {"output_file": inertia_yaml_path},
+            {"robot_description": robot_description},
         ],
     )
 
-    # 7.7 tcp extractor saves the gst0.yaml
+    # 7.7 tcp_extractor_kdl – writes gst0.yaml
     tcp_extractor_node = Node(
         package="smm_synthesis",
         executable="tcp_extractor_kdl",
         name="tcp_extractor_kdl",
         output="screen",
         parameters=[
-            {"output_file": tcp_yaml_path},            # FULL PATH
-            {"robot_description": robot_description},  # same URDF string
+            {"output_file": tcp_yaml_path},
+            {"robot_description": robot_description},
         ],
     )
 
-    # 7.8 active twists extractor saves the xi_ai_anat.yaml
+    # 7.8 active twists extractor – writes xi_ai_anat.yaml
     act_twist_extractor_node = Node(
         package="smm_synthesis",
         executable="twist_extractor_screws",
         name="twist_extractor_screws",
         output="screen",
         parameters=[
-            {"input_file": frame_yaml_path},            # FULL PATH
-            {"output_file": act_twist_yaml_path},            # FULL PATH
+            {"input_file": frame_yaml_path},
+            {"output_file": act_twist_yaml_path},
         ],
     )
 
-    # 7.9 passive frame_extractor_kdl
+    # 7.9 passive frame_extractor_kdl – writes gspj0.yaml
     pas_frame_extractor_node = Node(
         package="smm_synthesis",
         executable="passive_frame_extractor_kdl",
         name="passive_frame_extractor_kdl",
         output="screen",
         parameters=[
-            {"output_file": pas_frame_yaml_path},          # FULL PATH
-            {"robot_description": robot_description},  # URDF as string
+            {"output_file": pas_frame_yaml_path},
+            {"robot_description": robot_description},
         ],
     )
 
-    # 7.10 passive twists extractor saves the xi_pj_anat.yaml
+    # 7.10 passive twists extractor – writes xi_pj_anat.yaml
     pas_twist_extractor_node = Node(
         package="smm_synthesis",
         executable="passive_twist_extractor_screws",
         name="passive_twist_extractor_screws",
         output="screen",
         parameters=[
-            {"input_file": pas_frame_yaml_path},            # FULL PATH
-            {"output_file": pas_twist_yaml_path},            # FULL PATH
+            {"input_file": pas_frame_yaml_path},
+            {"output_file": pas_twist_yaml_path},
         ],
     )
 
-    # 7.11 passive angle extractor saves the q_pj_anat.yaml
+    # 7.11 pseudo-angle extractor – writes q_pj_anat.yaml
     pseudo_angle_extractor_node = Node(
         package="smm_synthesis",
         executable="pseudo_angle_extractor",
@@ -234,7 +234,7 @@ def generate_launch_description():
         ],
     )
 
-    # 7.12 structure digit set spnning node to keep param alive in ros2
+    # 7.12 structure digit setter (keeps params alive)
     structure_digit_node = Node(
         package="smm_synthesis",
         executable="structure_digit_setter",

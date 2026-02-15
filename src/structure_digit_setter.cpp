@@ -23,7 +23,7 @@ int main(int argc, char ** argv)
     return 1;
   }
 
-  const std::string yaml_path = share_dir + "/config/yaml/assembly.yaml";
+  const std::string yaml_path = share_dir + "/config/yaml/3dof/assembly_3dof.yaml";
 
   // Load assembly.yaml
   YAML::Node assembly;

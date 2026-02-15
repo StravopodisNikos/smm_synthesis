@@ -60,7 +60,7 @@ int main(int argc, char ** argv)
   }
 
   // ---- Read structure parameters from assembly.yaml ----
-  const std::string structure_file = share_dir + "/config/yaml/assembly.yaml";
+  const std::string structure_file = share_dir + "/config/yaml/3dof/assembly_3dof.yaml";
   YAML::Node assembly;
   try {
     assembly = YAML::LoadFile(structure_file);

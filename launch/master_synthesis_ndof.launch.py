@@ -154,9 +154,9 @@ def launch_setup(context, *args, **kwargs):
         parameters=[
             {"output_file": frame_yaml_path},
             {"robot_description": robot_description},
-            {"root_link": "base_plate"},
+            {"root_link": "base_plate"}, 
             {"tip_link": "tcp"},
-            {"apply_rotz_minus_pi": True},
+            {"apply_rotz_minus_pi": False}, # se to False for root->base_plate
         ],
     )
 
@@ -170,7 +170,7 @@ def launch_setup(context, *args, **kwargs):
             {"output_file": com_yaml_path},
             {"robot_description": robot_description},
             {"tip_link": "tcp"},
-            {"root_link_name": "base_plate"},
+            {"root_link_name": "base_plate"}, 
         ],
     )
 
@@ -196,7 +196,7 @@ def launch_setup(context, *args, **kwargs):
             {"output_file": tcp_yaml_path},
             {"robot_description": robot_description},
             {"tip_link": "tcp"},
-            {"root_link": "base_plate"},
+            {"root_link": "base_plate"}, 
         ],
     )
 
