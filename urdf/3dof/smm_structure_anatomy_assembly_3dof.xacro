@@ -458,7 +458,7 @@
   <xacro:massage_tool_stl_3dof
     name="${massage_tool_stl}"
     tcp_frame_name="tcp"
-    tcp_xyz="0 0 0.045"
+    tcp_xyz="0 0 0.065"
     tcp_rpy="0 0 0"/>
 
   <gazebo reference="${massage_tool_stl}">
