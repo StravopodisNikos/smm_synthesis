@@ -172,6 +172,123 @@ ros2 launch smm_synthesis smm_synthesis_viz_tcp_and_kinematic_manipulability_ndo
   dof:=6
   ```
 
+## 2. Kinematic & Dynamic Manipulability Ellipsoid Visualization
+
+`smm_synthesis_viz_ellipsoid_ndof.launch.py`  
+Extends the synthesis pipeline with kinematic and dynamic manipulability ellipsoid computation and RViz visualization.
+
+### Scope
+
+This launch configuration provides an extended visualization pipeline for the synthesized N-DoF SMM, focusing on manipulability analysis in task space.
+
+It enables:
+- interactive joint motion input (`q`, `dq`, `ddq`)
+- computation of kinematic manipulability ellipsoids
+- computation of dynamic manipulability ellipsoids
+- optional translational and rotational ellipsoid generation
+- real-time RViz visualization of ellipsoid geometry and principal axes
+
+The pipeline builds directly on top of the synthesis workflow and uses the generated YAML data as input.
+
+---
+
+### Components Overview
+
+#### Launch Files called
+- `master_synthesis_ndof.launch.py`  
+  Provides the full synthesis pipeline and robot visualization.
+
+---
+
+#### Nodes Used
+
+- `smm_joint_motion_gui_ndof_node` *(smm_viz_tools)*  
+  Custom GUI for joint motion input (`q`, `dq`, `ddq`).
+
+- `smm_kinematic_manipulability_ndof_node` *(smm_metrics)*  
+  Computes kinematic manipulability ellipsoid parameters.
+
+- `smm_dynamic_manipulability_ndof_node` *(smm_metrics)*  
+  Computes dynamic manipulability ellipsoid parameters using the selected mass matrix formulation.
+
+- `smm_ellipsoid_ndof_viz_node` *(smm_viz_tools)*  
+  Generic ellipsoid visualization node used to convert ellipsoid messages into RViz markers.
+
+---
+
+### Published Topics
+
+- `/smm_joint_motion_cmd_ndof`  
+  Joint motion command (`q`, `dq`, `ddq`)
+
+- `/joint_states`  
+  Mirrored joint states for visualization
+
+- `/smm/kinematic_manipulability_ellipsoid_trans_ndof`  
+  Kinematic translational manipulability ellipsoid message
+
+- `/smm/kinematic_manipulability_ellipsoid_rot_ndof`  
+  Kinematic rotational manipulability ellipsoid message
+
+- `/smm/dynamic_manipulability_ellipsoid_trans_ndof`  
+  Dynamic translational manipulability ellipsoid message
+
+- `/smm/dynamic_manipulability_ellipsoid_rot_ndof`  
+  Dynamic rotational manipulability ellipsoid message
+
+- `/visualization_kin_ell_trans_ndof`  
+  Kinematic translational ellipsoid visualization (`Marker`)
+
+- `/visualization_kin_ell_trans_axes_ndof`  
+  Kinematic translational ellipsoid principal axes (`MarkerArray`)
+
+- `/visualization_kin_ell_rot_ndof`  
+  Kinematic rotational ellipsoid visualization (`Marker`)
+
+- `/visualization_kin_ell_rot_axes_ndof`  
+  Kinematic rotational ellipsoid principal axes (`MarkerArray`)
+
+- `/visualization_dyn_ell_trans_ndof`  
+  Dynamic translational ellipsoid visualization (`Marker`)
+
+- `/visualization_dyn_ell_trans_axes_ndof`  
+  Dynamic translational ellipsoid principal axes (`MarkerArray`)
+
+- `/visualization_dyn_ell_rot_ndof`  
+  Dynamic rotational ellipsoid visualization (`Marker`)
+
+- `/visualization_dyn_ell_rot_axes_ndof`  
+  Dynamic rotational ellipsoid principal axes (`MarkerArray`)
+
+---
+
+### Typical Usage
+
+#### 3-DoF
+
+```text
+ros2 launch smm_synthesis smm_synthesis_viz_ellipsoid_ndof.launch.py \
+  data_dir:=/home/nikos/ros2_ws/src/smm_class_pkgs/smm_data/synthesis/yaml \
+  xacro_path:=urdf/6dof/smm_structure_anatomy_assembly_6dof.xacro \
+  dof:=6 \
+  joint_cmd_topic:=/smm_joint_motion_cmd_ndof \
+  frame_id:=base_plate \
+  run_kinematic_manipulability:=true \
+  run_dynamic_manipulability:=true \
+  publish_kinematic_translational:=true \
+  publish_kinematic_rotational:=true \
+  publish_dynamic_translational:=true \
+  publish_dynamic_rotational:=true \
+  dynamic_mass_matrix_representation:=body \
+  dynamic_body_frame_selection:=joint
+  ```
+
+## Examples
+
+### RViz Visualization
+
+![RViz View](doc/images/6dof-ellipsoids.png)
+
 ## License
 
 This project is licensed under the BSD 3-Clause License. See the [LICENSE](LICENSE) file for details.
