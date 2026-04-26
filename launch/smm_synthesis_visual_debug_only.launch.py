@@ -97,8 +97,9 @@ ros2 launch smm_synthesis smm_synthesis_visual_debug_only.launch.py \
   run_body_jacobians_2:=false \
   run_com_jacobians:=false \
   run_hybrid_jacobian:=false \
-  run_mass_matrix:=false
-
+  run_mass_matrix:=false \ 
+  run_coriolis_matrix:=true \
+  run_gravity_vector:=true
 ===============================================================================
 """
 
@@ -195,8 +196,20 @@ def generate_launch_description():
         description="Execute mass matrix calculation."
     )
 
-    mass_matrix_representation_arg = DeclareLaunchArgument(
-        "mass_matrix_representation",
+    run_coriolis_matrix_arg = DeclareLaunchArgument(
+        "run_coriolis_matrix",
+        default_value="false",
+        description="Execute coriolis matrix calculation."
+    )
+
+    run_gravity_vector_arg = DeclareLaunchArgument(
+        "run_gravity_vector",
+        default_value="false",
+        description="Execute gravity vector calculation."
+    )
+
+    dynamics_representation_arg = DeclareLaunchArgument(
+        "dynamics_representation",
         default_value="body",
         description="Mass matrix representation: 'spatial' or 'body'."
     )
@@ -225,8 +238,10 @@ def generate_launch_description():
     run_com_jacobians = LaunchConfiguration("run_com_jacobians")
     run_hybrid_jacobian = LaunchConfiguration("run_hybrid_jacobian")
     run_mass_matrix = LaunchConfiguration("run_mass_matrix")
+    run_coriolis_matrix = LaunchConfiguration("run_coriolis_matrix")
+    run_gravity_vector = LaunchConfiguration("run_gravity_vector")
 
-    mass_matrix_representation = LaunchConfiguration("mass_matrix_representation")
+    dynamics_representation = LaunchConfiguration("dynamics_representation")
     body_frame_selection = LaunchConfiguration("body_frame_selection")
 
     # -------------------------------------------------------------------------
@@ -291,8 +306,10 @@ def generate_launch_description():
                 "run_com_jacobians": run_com_jacobians,
                 "run_hybrid_jacobian": run_hybrid_jacobian,
                 "run_mass_matrix": run_mass_matrix,
+                "run_coriolis_matrix": run_coriolis_matrix,
+                "run_gravity_vector": run_gravity_vector,
 
-                "mass_matrix_representation": mass_matrix_representation,
+                "dynamics_representation": dynamics_representation,
                 "body_frame_selection": body_frame_selection,
             }
         ],
@@ -312,7 +329,9 @@ def generate_launch_description():
         run_com_jacobians_arg,
         run_hybrid_jacobian_arg,
         run_mass_matrix_arg,
-        mass_matrix_representation_arg,
+        run_coriolis_matrix_arg,
+        run_gravity_vector_arg,
+        dynamics_representation_arg,
         body_frame_selection_arg,
         synthesis_launch,
         joint_gui_node,

@@ -283,11 +283,74 @@ ros2 launch smm_synthesis smm_synthesis_viz_ellipsoid_ndof.launch.py \
   dynamic_body_frame_selection:=joint
   ```
 
-## Examples
+## 3. Visual Debug Pipeline for Kinematics & Dynamics
+
+`smm_synthesis_visual_debug_only.launch.py`  
+Extends the synthesis pipeline with a low-noise development/debug workflow for inspecting internal kinematics and dynamics computations of the synthesized N-DoF SMM.
+
+### Scope
+
+This launch configuration provides a controlled debug pipeline for the synthesized N-DoF SMM, focused on direct terminal inspection of internal screw-theory computations rather than RViz marker visualization.
+
+It enables:
+- interactive joint motion input (`q`, `dq`, `ddq`)
+- one-shot or continuous debug execution
+- forward kinematics inspection
+- body Jacobian inspection
+- CoM Jacobian inspection
+- hybrid / operational Jacobian inspection
+- TCP velocity and acceleration inspection
+- joint-space mass matrix inspection
+- operational-space mass matrix inspection
+- joint-space Coriolis matrix inspection
+- operational-space Coriolis vector inspection
+- joint-space gravity vector inspection
+- operational-space gravity vector inspection
+
+The pipeline builds directly on top of the synthesis workflow and uses the generated YAML data as input.
+
+---
+
+### Components Overview
+
+#### Launch Files called
+- `master_synthesis_ndof.launch.py`  
+  Provides the full synthesis pipeline and robot visualization.
+
+---
+
+#### Nodes Used
+
+- `smm_joint_motion_gui_ndof_node` *(smm_viz_tools)*  
+  Custom GUI for joint motion input (`q`, `dq`, `ddq`).
+
+- `smm_visual_debug_only_node` *(smm_viz_tools)*  
+  Development/debug node for controlled one-shot or continuous execution of selected `ScrewsKinematicsNdof` and `ScrewsDynamicsNdof` functions, printing matrices, vectors, and poses directly to terminal.
+
+---
+
+### Published Topics
+
+- `/smm_joint_motion_cmd_ndof`  
+  Joint motion command (`q`, `dq`, `ddq`)
+
+- `/joint_states`  
+  Mirrored joint states for visualization
+
+---
+
+### Typical Usage
+
+#### 6-DoF one-shot debug of Jacobians and dynamics
+
+```text
+ros2 launch smm_synthesis smm_synthesis_visual_debug_only.launch.py   data_dir:=/home/nikos/ros2_ws/src/smm_class_pkgs/smm_data/synthesis/yaml   xacro_path:=urdf/6dof/smm_structure_anatomy_assembly_6dof.xacro   dof:=6   debug_once:=false   run_body_jacobians_1:=true   run_body_jacobians_2:=true   run_com_jacobians:=true   run_hybrid_jacobian:=true   run_mass_matrix:=true run_coriolis_matrix:=true run_gravity_vector:=true dynamics_representation:=body body_frame_selection:=com
+  ```
 
 ### RViz Visualization
 
 ![RViz View](doc/images/6dof-ellipsoids.png)
+![RViz View](doc/images/smm_ellipsoids.gif)
 
 ## License
 
